@@ -1,14 +1,14 @@
 import { createApp } from 'vue'
 import { createRouter, createMemoryHistory } from "vue-router";
 import App from './App.vue'
-import scriptPage from './components/scriptPage.vue';
+import scriptView from './components/scriptView.vue';
 import setupView from './components/setupView.vue';
 
 const router = createRouter({
   history: createMemoryHistory(),
   routes: [
     { path: '/', component: setupView, props: true },
-    { path: "/scriptPage", component: scriptPage},
+    { path: "/scriptView", component: scriptView, props:true},
   ],
 });
 

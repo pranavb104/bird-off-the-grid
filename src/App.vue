@@ -2,20 +2,20 @@
   <div v-if="$route.path === '/'" class="setupView">
     <setupView  :localTime="localTime" :socketStatus="socketStatus"/>
   </div>
-  <div v-if="$route.path === '/scriptPage'" class="scriptPage">
-    <scriptPage />
+  <div v-if="$route.path === '/scriptView'" class="scriptView">
+    <scriptView />
   </div>
 </template>
 
 <script>
 import setupView from './components/setupView.vue';
-import scriptPage from './components/scriptPage.vue';
+import scriptView from './components/scriptView.vue';
 
 export default {
   name: 'bird-off-the-grid',
   components: {
     setupView,
-    scriptPage
+    scriptView
   },
 
   data() {
@@ -26,14 +26,6 @@ export default {
       socketStatus: "disconnected" , //socket statuss
       };
     },
-
-    // Computed properties to dynamically change the class and text based on status.
-      // computed: {
-      //   socketStatusText() {
-      //     return this.socketStatus;
-      //   }
-      // },
-
 
     // The mounted lifecycle hook runs after the component has been mounted to the DOM.
     mounted() {
@@ -132,4 +124,14 @@ export default {
       text-align: center;
       padding: 20px;
     }
+
+  .scriptView {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--faint-gray);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 1rem;
+}
 </style>

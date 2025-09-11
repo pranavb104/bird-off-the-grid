@@ -38,7 +38,7 @@ export default {
     methods: {
       // Function to navigate to the script page.
       goToScriptPage() {
-        this.$router.push('/scriptPage');
+        this.$router.push('/scriptView');
       },
     }
 };
