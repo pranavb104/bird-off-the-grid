@@ -55,7 +55,7 @@ export default {
       width: 100%;
     }
     h1 {
-      font-size: 2.5rem;
+      font-size: 2rem;
       color: #d63384;
       margin-bottom: 0.5rem;
     }

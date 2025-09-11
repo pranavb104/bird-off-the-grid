@@ -1,9 +1,11 @@
 <template>
-  <div v-if="$route.path === '/'" class="setupView">
-    <setupView  :localTime="localTime" :socketStatus="socketStatus"/>
-  </div>
-  <div v-if="$route.path === '/scriptView'" class="scriptView">
-    <scriptView />
+  <div id="app">
+    <div v-if="$route.path === '/'" class="setupView">
+      <setupView  :localTime="localTime" :socketStatus="socketStatus"/>
+    </div>
+    <div v-if="$route.path === '/scriptView'" class="scriptView">
+      <scriptView :localTime="localTime" :socketStatus="socketStatus"/>
+    </div>
   </div>
 </template>
 
@@ -63,7 +65,7 @@ export default {
 
       // Function to initialize the WebSocket connection and set up event handlers.
       initializeWebSocket() {
-        this.socket = new WebSocket('ws://localhost:7100/ws');
+        this.socket = new WebSocket('ws://192.168.1.203:7100/ws');
 
         // Event handler for when the connection is established.
         this.socket.onopen = () => {
@@ -111,23 +113,43 @@ export default {
 </script>
 
 <style>
+
+  :root{
+    --white: #ffffff;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-700: #374151;
+    --indigo-500: #6366f1;
+    --emerald-500: #10b981;
+    --emerald-600: #059669;
+    --emerald-700: #047857;
+    --clipboard-bg: #4ade80; /* Tailwind's green-400 */
+    --faint-gray: #f9fafb;
+  }
+
+  /* Global Styles */
+  #app {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0px;
+    background: url(assets/bird-bkg.png);
+    background-repeat: no-repeat ;
+    background-size: cover;
+    overflow: hidden;
+  }
+
   .setupView {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: #f0f4f8;
-      color: #333;
+      /* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; */
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      margin: 0;
       text-align: center;
       padding: 20px;
     }
 
   .scriptView {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: var(--faint-gray);
+    /* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; */
     display: flex;
     justify-content: center;
     align-items: center;

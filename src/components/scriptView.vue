@@ -1,15 +1,8 @@
 <template>
-  <div id="app" class="container">
+  <div class="container">
     <!-- Header -->
     <header class="header">
-        <h1>Schedule Script Generator</h1>
-        <div class="dropdown-container">
-            <select class="example-dropdown">
-                <option value="">Load an Example ...</option>
-                <option value="example1">Example 1</option>
-                <option value="example2">Example 2</option>
-            </select>
-        </div>
+        <h1>Schedule Script for Birdnet</h1>
     </header>
     <!-- Form Body -->
     <main class="main-content">
@@ -40,20 +33,26 @@
             <button @click="addStates" class="button add-states-btn">Add States</button>
             <button @click="clearAllStates" class="button clear-states-btn">Clear All States</button>
         </div>
-        <button @click="copyToClipboard" class="button copy-btn">Copy to Clipboard</button>
     </footer>
 
-    <!-- Clipboard Message -->
-    <div id="message-box" class="message-box">Copied to clipboard!</div>
   </div>
 </template>
 
 <script>
 export default {
   name: 'scriptPage',
+  props: {
+    localTime: String,
+    socketStatus: String
+  },
 
   data() {
-
+    return {
+        startDate: this.localTime.split(' ')[0] || new Date().toISOString().slice(0, 10),
+        startTime: this.localTime.split(' ')[1] || new Date().toTimeString().slice(0, 8),
+        endDate: new Date().toISOString().slice(0, 10),
+        endTime: new Date().toTimeString().slice(0, 8)
+    };
   },
 
   methods: {
@@ -63,59 +62,17 @@ export default {
         console.log('Add States button clicked!');
     },
     clearAllStates() {
-        const now = new Date();
-        const date = now.toISOString().slice(0, 10);
-        const time = now.toTimeString().slice(0, 8);
-        this.startDate = date;
-        this.startTime = time;
-        this.endDate = date;
-        this.endTime = time;
+        console.log('Clear All States button clicked!');
+
     },
     copyToClipboard() {
-        // Create the "script" content to copy.
-        const scriptContent = `Start: ${this.startDate}T${this.startTime}\nEnd: ${this.endDate}T${this.endTime}`;
 
-        // Create a temporary textarea to hold the content to copy.
-        const tempTextArea = document.createElement('textarea');
-        tempTextArea.value = scriptContent;
-        document.body.appendChild(tempTextArea);
-        tempTextArea.select();
-
-        // Use the deprecated but widely supported execCommand for clipboard access.
-        try {
-            document.execCommand('copy');
-            this.showClipboardMessage();
-        } catch (err) {
-            console.error('Failed to copy text: ', err);
-        } finally {
-            document.body.removeChild(tempTextArea);
-        }
     },
-    showClipboardMessage() {
-        const messageBox = document.getElementById('message-box');
-        messageBox.classList.add('show');
-        setTimeout(() => {
-            messageBox.classList.remove('show');
-        }, 2000); // Hide after 2 seconds
-    }
   }
 }
 </script>
 
-<style scoped>
-    :root {
-        --emerald-600: #059669;
-        --emerald-700: #047857;
-        --gray-700: #374151;
-        --gray-200: #e5e7eb;
-        --gray-300: #d1d5db;
-        --white: #fff;
-        --faint-gray: #f3f4f6;
-        --indigo-500: #6366f1;
-        --emerald-500: #10b981;
-        --gray-400: #9ca3af;
-        --clipboard-bg: #4CAF50;
-    }
+<style >
 
     .container {
         width: 100%;
@@ -138,24 +95,8 @@ export default {
     }
 
     .header h1 {
-        font-size: 1.25rem; /* text-xl */
+        font-size: 2rem; /* text-xl */
         font-weight: 600; /* font-semibold */
-    }
-
-    .dropdown-container {
-        position: relative;
-        display: inline-block;
-    }
-
-    .example-dropdown {
-        border-radius: 0.375rem; /* rounded-md */
-        border: 1px solid var(--gray-300);
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
-        padding: 0.5rem 1rem;
-        background-color: var(--white);
-        color: var(--gray-700);
-        width: 100%;
-        cursor: pointer;
     }
 
     .example-dropdown:hover {
@@ -240,12 +181,12 @@ export default {
         background-color: var(--emerald-700);
     }
     
-    .clear-states-btn, .copy-btn {
+    .clear-states-btn {
         color: var(--gray-700);
         background-color: var(--gray-200);
     }
     
-    .clear-states-btn:hover, .copy-btn:hover {
+    .clear-states-btn:hover {
         background-color: var(--gray-300);
     }
 
@@ -255,7 +196,7 @@ export default {
         box-shadow: 0 0 0 2px rgba(255, 255, 255, 0), 0 0 0 2px var(--emerald-500);
     }
     
-    .clear-states-btn:focus, .copy-btn:focus {
+    .clear-states-btn:focus{
         outline: 2px solid transparent;
         outline-offset: 2px;
         box-shadow: 0 0 0 2px rgba(255, 255, 255, 0), 0 0 0 2px var(--gray-400);
@@ -273,23 +214,4 @@ export default {
         }
     }
     
-    /* Custom styles for the clipboard message */
-    .message-box {
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 10px 20px;
-        background-color: var(--clipboard-bg);
-        color: var(--white);
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
-        transition: opacity 0.5s ease-in-out;
-        opacity: 0;
-        pointer-events: none;
-    }
-    .message-box.show {
-        opacity: 1;
-    }
 </style>
