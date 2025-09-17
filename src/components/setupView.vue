@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-        <h1>BirdNet OffGrid</h1>
+        <h2>BirdNet OffGrid</h2>
         <p class="message">Your Device is {{ socketStatusText }}</p>
         <div class="time-display"> {{ localTime }} </div>
         <br/>
@@ -48,13 +48,13 @@ export default {
 
     .container {
       background: #fff;
-      padding: 40px;
+      padding: 20px;
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
       max-width: 500px;
       width: 100%;
     }
-    h1 {
+    h2 {
       font-size: 2rem;
       color: #d63384;
       margin-bottom: 0.5rem;
@@ -65,7 +65,7 @@ export default {
       margin-bottom: 2rem;
     }
     .time-display {
-      font-size: 1.5rem;
+      font-size: 1.125rem;
       font-weight: 600;
       color: #495057;
       background-color: #e9ecef;

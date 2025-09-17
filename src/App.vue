@@ -114,20 +114,6 @@ export default {
 
 <style>
 
-  :root{
-    --white: #ffffff;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-400: #9ca3af;
-    --gray-700: #374151;
-    --indigo-500: #6366f1;
-    --emerald-500: #10b981;
-    --emerald-600: #059669;
-    --emerald-700: #047857;
-    --clipboard-bg: #4ade80; /* Tailwind's green-400 */
-    --faint-gray: #f9fafb;
-  }
-
   /* Global Styles */
   #app {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -142,8 +128,8 @@ export default {
       /* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; */
       display: flex;
       justify-content: center;
-      align-items: center;
-      height: 100vh;
+      align-items: center; 
+      min-height: 100vh;
       text-align: center;
       padding: 20px;
     }
@@ -152,8 +138,9 @@ export default {
     /* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; */
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: center; 
     min-height: 100vh;
-    padding: 1rem;
+    text-align: center;
+    padding: 20px;
 }
 </style>
