@@ -1,0 +1,28 @@
+# BirdNET Backend Configuration
+
+# Location — set to your coordinates for species filtering
+latitude: 0.0
+longitude: 0.0
+
+# Minimum confidence to save a detection (0.0 - 1.0)
+confidence_threshold: 0.7
+
+# Audio capture settings
+audio:
+  device: "plughw:1,0"     # USB PnP Sound Device (card 1, device 0)
+  sample_rate: 48000
+  record_duration: 15       # seconds per recording
+  chunk_duration: 3         # seconds per analysis chunk
+
+# Model paths (relative to project root)
+model:
+  path: "model/BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
+  labels: "model/BirdNET_GLOBAL_6K_V2.4_Model_FP16_Labels.txt"
+
+# API server
+api:
+  host: "0.0.0.0"
+  port: 7007
+
+# Data directory (relative to project root)
+data_dir: "data"

@@ -1,0 +1,9 @@
+ai-edge-litert
+librosa
+numpy
+matplotlib
+fastapi
+uvicorn[standard]
+pyyaml
+watchdog
+soundfile
