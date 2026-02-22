@@ -70,7 +70,7 @@ export default {
 
       // Function to initialize the WebSocket connection and set up event handlers.
       initializeWebSocket() {
-        this.socket = new WebSocket('ws://192.168.1.203:7100/ws');
+        this.socket = new WebSocket('ws://192.168.1.160:7007/ws');
 
         // Event handler for when the connection is established.
         this.socket.onopen = () => {

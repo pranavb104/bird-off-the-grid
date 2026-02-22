@@ -107,3 +107,6 @@ All model paths in `config.yml` are relative to the `backend/` directory (i.e. `
 ### Pi deployment
 
 `install.sh` creates three systemd services: `birdnet-recorder`, `birdnet-analyzer`, `birdnet-api`. The venv is at `~/birdnet-venv` (not inside the repo). On the Pi, `ai-edge-litert` may not be available — the interpreter import falls back to `tflite_runtime` then `tensorflow.lite`.
+
+## Important Notes
+- The first commit is to main and thereafter all commits are to master branch 

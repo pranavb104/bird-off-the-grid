@@ -1,9 +1,16 @@
 import { createApp } from 'vue'
 import { createRouter, createMemoryHistory } from "vue-router";
+
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faPlay, faPause, faCircleInfo, faFeather } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+
 import App from './App.vue'
 import scriptView from './components/scriptView.vue';
 import setupView from './components/setupView.vue';
 import Dashboard from './components/Dashboard.vue';
+
+library.add(faPlay, faPause, faCircleInfo, faFeather)
 
 const router = createRouter({
   history: createMemoryHistory(),
@@ -14,4 +21,7 @@ const router = createRouter({
   ],
 });
 
-createApp(App).use(router).mount('#app')
+createApp(App)
+  .use(router)
+  .component('font-awesome-icon', FontAwesomeIcon)
+  .mount('#app')

@@ -31,12 +31,13 @@
                     <div class="flex flex-col items-center lg:items-start justify-center lg:justify-start space-y-1.5 lg:w-[180px] lg:pl-3 lg:h-full">
                         <div class="relative">
                             <img :src="latestObservationimageUrl" :alt="latestObservationData.common_name"
+                                @error="latestObservationimageUrl = '/default_bird.svg'"
                                 class="w-[68px] h-[68px] object-cover rounded-full border-2 border-gray-200">
                         </div>
                         <div class="flex flex-col items-center lg:items-start text-center lg:text-left">
                             <h3 class="text-[15px] font-medium lg:truncate lg:max-w-[160px]">{{ latestObservationData.common_name }}</h3>
                             <p class="text-[13px] text-gray-600 lg:truncate lg:max-w-[160px] italic">{{ latestObservationData.scientific_name }}</p>
-                            <p class="text-xs text-gray-500">{{ formatTimestamp(latestObservationData.timestamp) }}</p>
+                            <p class="text-xs text-gray-500">{{ formatTimestamp(latestObservationData.date + 'T' + latestObservationData.time) }}</p>
                         </div>
                     </div>
                     
@@ -66,7 +67,7 @@
                         </li>
                          <li class="flex justify-between border-b pb-1">
                             <span class="text-gray-600">Species Count</span>
-                            <span class="font-bold text-gray-800">{{ summaryData.species_count || 0 }}</span>
+                            <span class="font-bold text-gray-800">{{ summaryData.unique_species || 0 }}</span>
                         </li>
                     </ul>
                     <p v-else class="text-gray-500">No summary data available.</p>
@@ -83,12 +84,12 @@
                             class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md transition-colors">
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 text-xs">
-                                    <font-awesome-icon icon="fas fa-feather" />
+                                    <font-awesome-icon :icon="['fas', 'feather']" />
                                 </div>
                                 <div>
                                     <div class="font-medium text-gray-800">{{ observation.common_name }}</div>
                                     <div class="text-xs text-gray-500">
-                                        {{ formatTimestamp(observation.timestamp) }}
+                                        {{ formatTimestamp(observation.date + 'T' + observation.time) }}
                                         <span class="mx-1">•</span>
                                         {{ formatConfidence(observation.confidence) }}
                                     </div>
@@ -100,7 +101,7 @@
                                         :icon="currentPlayingId === observation.id ? ['fas', 'pause'] : ['fas', 'play']"
                                         class="h-4 w-4" />
                                 </button>
-                                <button @click="showSpectrogram(observation.spectrogram_file_name)"
+                                <button @click="showSpectrogram(observation.file_path)"
                                     class="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-50 transition-colors">
                                     <font-awesome-icon :icon="['fas', 'circle-info']" class="h-4 w-4" />
                                 </button>
@@ -138,8 +139,6 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import Chart from 'chart.js/auto'
 import { MatrixController, MatrixElement } from 'chartjs-chart-matrix'
 
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-
 import { useFetchBirdData } from '@/composables/useFetchBirdData';
 import { useBirdCharts } from '@/composables/useBirdCharts';
 import { useAudioPlayer } from '@/composables/useAudioPlayer';
@@ -151,7 +150,6 @@ Chart.register(MatrixController, MatrixElement)
 export default {
     name: 'dash-board',
     components: {
-        FontAwesomeIcon,
         SpectrogramModal
     },
     setup() {
@@ -240,7 +238,7 @@ export default {
                 return;
             }
 
-            const audioUrl = getAudioUrl(latestObservationData.value?.bird_song_file_name);
+            const audioUrl = getAudioUrl(latestObservationData.value?.audio_path);
             if (!audioUrl) return;
 
             latestAudioElement = new Audio(audioUrl);
@@ -253,7 +251,7 @@ export default {
 
         const togglePlayBirdCall = (observation) => {
             if (!observation?.id) return
-            const audioUrl = getAudioUrl(observation?.bird_song_file_name)
+            const audioUrl = getAudioUrl(observation?.audio_path)
             if (!audioUrl) return
             audioTogglePlay(observation.id, audioUrl)
         };
