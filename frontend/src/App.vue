@@ -126,7 +126,8 @@ export default {
     background: url(assets/bird-bkg.png);
     background-repeat: no-repeat ;
     background-size: cover;
-    overflow: hidden;
+    min-height: 100vh;
+    overflow-y: auto;
   }
 
   .setupView {
@@ -151,7 +152,13 @@ export default {
 
   .dashboardView {
     min-height: 100vh;
-    padding: 20px;
+    padding: 12px;
     background-color: #f3f4f6; /* light gray background */
+  }
+
+  @media (min-width: 1024px) {
+    .dashboardView {
+      padding: 20px;
+    }
   }
 </style>
