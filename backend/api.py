@@ -253,6 +253,72 @@ def setup_complete():
     return {"complete": (schedules_dir / "birdnet.wpi").is_file()}
 
 
+@app.post("/api/reset")
+def reset_data():
+    import shutil
+
+    logger.info("=== /api/reset called ===")
+
+    wittypi_cfg = config.get("wittypi", {})
+    schedules_dir = Path(wittypi_cfg.get("schedules_dir", "/home/pi/wittypi/schedules"))
+    wpi_file = schedules_dir / "birdnet.wpi"
+    logger.info("data_dir=%s", data_dir)
+    logger.info("schedules_dir=%s  exists=%s", schedules_dir, schedules_dir.exists())
+    logger.info("wpi_file=%s  exists=%s", wpi_file, wpi_file.exists())
+
+    errors = []
+
+    for subdir in ["detections", "StreamData", "bird_images"]:
+        target = data_dir / subdir
+        logger.info("subdir %s  exists=%s", target, target.exists())
+        if target.exists():
+            try:
+                shutil.rmtree(target)
+                logger.info("deleted %s", target)
+            except OSError as e:
+                logger.error("failed to delete %s: %s", target, e)
+                errors.append(str(e))
+        try:
+            target.mkdir(parents=True, exist_ok=True)
+            logger.info("recreated %s", target)
+        except OSError as e:
+            logger.error("failed to recreate %s: %s", target, e)
+            errors.append(str(e))
+
+    db_file = data_dir / "birds.db"
+    logger.info("db_file=%s  exists=%s", db_file, db_file.exists())
+    if db_file.exists():
+        try:
+            db_file.unlink()
+            logger.info("deleted %s", db_file)
+        except OSError as e:
+            logger.error("failed to delete %s: %s", db_file, e)
+            errors.append(str(e))
+
+    # Recreate the DB with an empty schema so live services don't hit "no such table"
+    try:
+        database.init_db(str(data_dir))
+        logger.info("re-initialized empty database at %s", db_file)
+    except Exception as e:
+        logger.error("failed to reinitialize database: %s", e)
+        errors.append(str(e))
+
+    if wpi_file.exists():
+        try:
+            wpi_file.unlink()
+            logger.info("deleted %s", wpi_file)
+        except OSError as e:
+            logger.error("failed to delete %s: %s", wpi_file, e)
+            errors.append(str(e))
+
+    if errors:
+        logger.error("reset completed with errors: %s", errors)
+        return JSONResponse({"error": "; ".join(errors)}, status_code=500)
+
+    logger.info("reset completed successfully")
+    return {"status": "ok"}
+
+
 # ---------------------------------------------------------------------------
 # Bird image (cache-first, falls back to Wikipedia, then 404)
 # ---------------------------------------------------------------------------
