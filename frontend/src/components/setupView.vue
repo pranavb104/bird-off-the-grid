@@ -10,6 +10,8 @@
 </template>
 
 <script>
+import api from '@/services/api';
+
 export default {
   name: "setupView",
   props: {
@@ -29,18 +31,31 @@ export default {
     };
   },
 
-    computed: {
-        socketStatusText() {
-            return this.socketStatus;
-        }
-    },
+  created() {
+    this.checkSetupComplete();
+  },
 
-    methods: {
-      // Function to navigate to the script page.
-      goToScriptPage() {
-        this.$router.push('/scriptView');
-      },
+  computed: {
+    socketStatusText() {
+      return this.socketStatus;
     }
+  },
+
+  methods: {
+    async checkSetupComplete() {
+      try {
+        const resp = await api.get('/setup-complete');
+        if (resp.data.complete) {
+          this.$router.push('/dashboard');
+        }
+      } catch {
+        // Pi not reachable yet — stay on setup screen
+      }
+    },
+    goToScriptPage() {
+      this.$router.push('/scriptView');
+    },
+  }
 };
 </script>
 

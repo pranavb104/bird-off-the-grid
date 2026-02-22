@@ -1,8 +1,11 @@
 """FastAPI server for BirdNET detections."""
 
 import asyncio
+import json as _json
 import logging
 import subprocess
+import urllib.request
+import urllib.parse
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -236,6 +239,67 @@ def set_schedule(req: ScheduleRequest):
         return JSONResponse({"error": "runScript.sh timed out"}, status_code=500)
 
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Setup-complete flag
+# ---------------------------------------------------------------------------
+
+@app.get("/api/setup-complete")
+def setup_complete():
+    """Return whether a WittyPi schedule has already been written."""
+    wittypi_cfg = config.get("wittypi", {})
+    schedules_dir = Path(wittypi_cfg.get("schedules_dir", "/home/pi/wittypi/schedules"))
+    return {"complete": (schedules_dir / "birdnet.wpi").is_file()}
+
+
+# ---------------------------------------------------------------------------
+# Bird image (cache-first, falls back to Wikipedia, then 404)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/bird-image")
+def get_bird_image(species: str = Query(...)):
+    """Serve a cached bird photo; fetch from Wikipedia on first request."""
+    safe_name = "".join(
+        c if c.isalnum() or c in " -" else "_" for c in species
+    ).replace(" ", "_")
+    cache_dir = data_dir / "bird_images"
+    cache_path = cache_dir / f"{safe_name}.jpg"
+
+    if cache_path.is_file():
+        return FileResponse(str(cache_path), media_type="image/jpeg")
+
+    # Try Wikipedia thumbnail API
+    try:
+        params = urllib.parse.urlencode({
+            "action": "query", "prop": "pageimages", "format": "json",
+            "piprop": "thumbnail", "pithumbsize": "400",
+            "titles": species, "origin": "*",
+        })
+        req = urllib.request.Request(
+            f"https://en.wikipedia.org/w/api.php?{params}",
+            headers={"User-Agent": "BirdNET-Pi/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            data = _json.loads(resp.read())
+        pages = data.get("query", {}).get("pages", {})
+        page = next(iter(pages.values()), {})
+        img_url = page.get("thumbnail", {}).get("source")
+
+        if img_url:
+            img_req = urllib.request.Request(
+                img_url, headers={"User-Agent": "BirdNET-Pi/1.0"}
+            )
+            with urllib.request.urlopen(img_req, timeout=10) as img_resp:
+                img_data = img_resp.read()
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            cache_path.write_bytes(img_data)
+            logger.info("Cached bird image for %r → %s", species, cache_path.name)
+            return FileResponse(str(cache_path), media_type="image/jpeg")
+    except Exception as exc:
+        logger.debug("Bird image fetch failed for %r: %s", species, exc)
+
+    return JSONResponse({"error": "no image available"}, status_code=404)
 
 
 def main():

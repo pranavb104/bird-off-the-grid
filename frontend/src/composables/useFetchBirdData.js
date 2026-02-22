@@ -10,7 +10,7 @@ export function useFetchBirdData() {
     const latestObservationData = ref((null));
     const recentObservationsData = ref([]);
     const summaryData = ref({});
-    const latestObservationimageUrl = ref("/default_bird.webp");
+    const latestObservationimageUrl = ref("/default_bird.svg");
 
     const detailedBirdActivityError = ref(null);
     const hourlyBirdActivityError = ref(null);
@@ -105,21 +105,9 @@ export function useFetchBirdData() {
             }
 
             if (latestObservationData.value) {
-                try {
-                    const species = latestObservationData.value.common_name || latestObservationData.value.scientific_name;
-                    const resp = await fetch(
-                        `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json` +
-                        `&piprop=thumbnail&pithumbsize=400&titles=${encodeURIComponent(species)}&origin=*`
-                    );
-                    const json = await resp.json();
-                    const pages = json.query?.pages ?? {};
-                    const page = Object.values(pages)[0];
-                    if (page?.thumbnail?.source) {
-                        latestObservationimageUrl.value = page.thumbnail.source;
-                    }
-                } catch (e) {
-                    logger.warn('Failed to fetch wikimedia image', e);
-                }
+                const species = latestObservationData.value.common_name || latestObservationData.value.scientific_name;
+                const base = api.defaults.baseURL;
+                latestObservationimageUrl.value = `${base}/bird-image?species=${encodeURIComponent(species)}`;
             }
 
         } catch (error) {

@@ -31,6 +31,7 @@
                     <div class="flex flex-col items-center lg:items-start justify-center lg:justify-start space-y-1.5 lg:w-[180px] lg:pl-3 lg:h-full">
                         <div class="relative">
                             <img :src="latestObservationimageUrl" :alt="latestObservationData.common_name"
+                                @error="latestObservationimageUrl = '/default_bird.svg'"
                                 class="w-[68px] h-[68px] object-cover rounded-full border-2 border-gray-200">
                         </div>
                         <div class="flex flex-col items-center lg:items-start text-center lg:text-left">
@@ -83,7 +84,7 @@
                             class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md transition-colors">
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 text-xs">
-                                    <font-awesome-icon icon="fas fa-feather" />
+                                    <font-awesome-icon :icon="['fas', 'feather']" />
                                 </div>
                                 <div>
                                     <div class="font-medium text-gray-800">{{ observation.common_name }}</div>
@@ -138,8 +139,6 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import Chart from 'chart.js/auto'
 import { MatrixController, MatrixElement } from 'chartjs-chart-matrix'
 
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-
 import { useFetchBirdData } from '@/composables/useFetchBirdData';
 import { useBirdCharts } from '@/composables/useBirdCharts';
 import { useAudioPlayer } from '@/composables/useAudioPlayer';
@@ -151,7 +150,6 @@ Chart.register(MatrixController, MatrixElement)
 export default {
     name: 'dash-board',
     components: {
-        FontAwesomeIcon,
         SpectrogramModal
     },
     setup() {
