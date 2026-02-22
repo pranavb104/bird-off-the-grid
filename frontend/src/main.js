@@ -1,3 +1,4 @@
+import './tailwind.css'
 import { createApp } from 'vue'
 import { createRouter, createMemoryHistory } from "vue-router";
 
