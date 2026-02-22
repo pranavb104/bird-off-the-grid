@@ -33,25 +33,41 @@
                 </div>
                 <div class="selected-option"> {{ options.find(option => option.value === selected)?.info }}</div>
             </div>
+            <!-- Custom time inputs shown only for option3 -->
+            <div v-if="selected === 'option3'" class="input-group">
+                <label class="label">On time:</label>
+                <div class="input-container">
+                    <input type="time" v-model="onTime" class="form-input">
+                </div>
+                <label class="label" style="margin-top: 0.75rem;">Off time:</label>
+                <div class="input-container">
+                    <input type="time" v-model="offTime" class="form-input">
+                </div>
+            </div>
+            <div v-if="submitError" class="error-message">{{ submitError }}</div>
         </div>
             <br/>
             <br/>
         <!-- Navigation Buttons -->
          <div v-if="state === 0">
-            <button  class="button" @click="state = 1">Next</button>
+            <button class="button" @click="state = 1">Next</button>
          </div>
          <div v-if="state === 1">
-            <button v-if="state === 1" class="button" @click="state = 0">Back</button>
-            <span style="width: 25px; display: inline-block;"></span> 
-            <button v-if="state === 1" class="button" @click="$router.push('/dashboard')">Next</button>
+            <button class="button" @click="state = 0">Back</button>
+            <span style="width: 25px; display: inline-block;"></span>
+            <button class="button" :disabled="isSubmitting" @click="submitSchedule">
+                {{ isSubmitting ? 'Submitting...' : 'Next' }}
+            </button>
          </div>
-         
+
     </main>
 
   </div>
 </template>
 
 <script>
+import api from '@/services/api';
+
 export default {
   name: 'scriptPage',
   props: {
@@ -70,13 +86,53 @@ export default {
             { text: 'Custom Time', value: 'option3', info: "Script runs at your specified times." }
         ],
         selected: 'option3',
+        onTime: '07:00',
+        offTime: '08:00',
+        isSubmitting: false,
+        submitError: null,
     };
   },
 
   methods: {
+    async submitSchedule() {
+        if (!this.startDate || !this.endDate) {
+            this.submitError = 'Please set both start and end dates.';
+            return;
+        }
+        if (this.selected === 'option3' && (!this.onTime || !this.offTime)) {
+            this.submitError = 'Please set both on and off times for custom schedule.';
+            return;
+        }
 
+        const scheduleTypeMap = {
+            option1: 'dawn_dusk',
+            option2: 'morning_afternoon',
+            option3: 'custom',
+        };
 
+        const body = {
+            start_datetime: this.startDate,
+            end_datetime: this.endDate,
+            schedule_type: scheduleTypeMap[this.selected],
+        };
+
+        if (this.selected === 'option3') {
+            body.on_time = this.onTime;
+            body.off_time = this.offTime;
+        }
+
+        this.isSubmitting = true;
+        this.submitError = null;
+        try {
+            await api.post('/schedule', body);
+            this.$router.push('/dashboard');
+        } catch (e) {
+            this.submitError = e.response?.data?.error || 'Failed to submit schedule. Please try again.';
+        } finally {
+            this.isSubmitting = false;
+        }
     },
+  },
 
 }
 </script>
@@ -108,14 +164,14 @@ export default {
         flex-direction: column;
         gap: 1.5rem; /* space-y-6 */
     }
-    
+
     .input-container {
         display: flex;
         flex-direction: column;
         gap: 0.5rem; /* space-y-2 */
         margin-top: 0.5rem;
     }
-    
+
     .label {
         font-size: 1.25rem; /* text-lg */
         display: block;
@@ -146,12 +202,22 @@ export default {
     .button:hover {
         background-color: #c61f6e;
     }
+    .button:disabled {
+        background-color: #e8a0c0;
+        cursor: not-allowed;
+    }
 
     .selected-option {
         margin-top: 1rem;
         font-size: 1rem;
         font-style: italic;
         color: #c61f6e;
+    }
+
+    .error-message {
+        color: #dc3545;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
     }
 
     /* Responsive Styles */
@@ -161,5 +227,5 @@ export default {
             gap: 1rem; /* space-x-4 */
         }
     }
-    
+
 </style>

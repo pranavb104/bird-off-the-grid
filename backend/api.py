@@ -1,12 +1,16 @@
 """FastAPI server for BirdNET detections."""
 
+import asyncio
 import logging
+import subprocess
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import yaml
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
 
 import database
 
@@ -30,6 +34,67 @@ app.add_middleware(
 
 database.init_db(str(data_dir))
 
+
+# ---------------------------------------------------------------------------
+# WebSocket connection manager
+# ---------------------------------------------------------------------------
+
+class ConnectionManager:
+    def __init__(self):
+        self.active: list[WebSocket] = []
+
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        self.active.append(ws)
+
+    def disconnect(self, ws: WebSocket):
+        if ws in self.active:
+            self.active.remove(ws)
+
+    async def broadcast(self, data: dict):
+        for ws in list(self.active):
+            try:
+                await ws.send_json(data)
+            except Exception:
+                self.disconnect(ws)
+
+
+manager = ConnectionManager()
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()  # keep-alive; accept client messages
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+
+async def broadcast_loop():
+    """Poll the DB every 10 s and push new detections to connected clients."""
+    last_id = None
+    while True:
+        await asyncio.sleep(10)
+        if manager.active:
+            try:
+                rows = database.get_recent(str(data_dir), 1)
+                if rows and rows[0].get("id") != last_id:
+                    last_id = rows[0]["id"]
+                    await manager.broadcast({"type": "new_detection", "data": rows[0]})
+            except Exception as exc:
+                logger.warning("broadcast_loop error: %s", exc)
+
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(broadcast_loop())
+
+
+# ---------------------------------------------------------------------------
+# Existing endpoints
+# ---------------------------------------------------------------------------
 
 @app.get("/api/health")
 def health():
@@ -81,6 +146,96 @@ def get_audio(date: str, species: str, filename: str):
     if not file_path.resolve().is_relative_to(data_dir.resolve()):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     return FileResponse(str(file_path), media_type="audio/mpeg")
+
+
+# ---------------------------------------------------------------------------
+# WittyPi schedule endpoint
+# ---------------------------------------------------------------------------
+
+class ScheduleRequest(BaseModel):
+    start_datetime: str   # ISO-8601 local datetime, e.g. "2024-03-01T05:00:00"
+    end_datetime: str
+    schedule_type: str    # "dawn_dusk" | "morning_afternoon" | "custom"
+    on_time: str = None   # "HH:MM" — required for custom
+    off_time: str = None  # "HH:MM" — required for custom
+
+
+def _build_wpi_content(req: ScheduleRequest) -> str:
+    """Generate WittyPi .wpi schedule file content."""
+    try:
+        start_dt = datetime.fromisoformat(req.start_datetime)
+        end_dt = datetime.fromisoformat(req.end_datetime)
+    except ValueError as exc:
+        raise ValueError(f"Invalid datetime format: {exc}") from exc
+
+    begin_date = start_dt.strftime("%Y-%m-%d")
+    end_date = end_dt.strftime("%Y-%m-%d")
+
+    if req.schedule_type == "dawn_dusk":
+        begin_time = "05:00:00"
+        cycle = "ON  H1\nOFF H12\nON  H1\nOFF H10"
+    elif req.schedule_type == "morning_afternoon":
+        begin_time = "08:00:00"
+        cycle = "ON  H1\nOFF H7\nON  H1\nOFF H15"
+    elif req.schedule_type == "custom":
+        if not req.on_time or not req.off_time:
+            raise ValueError("on_time and off_time are required for custom schedule")
+        on_h, on_m = map(int, req.on_time.split(":"))
+        off_h, off_m = map(int, req.off_time.split(":"))
+        begin_time = f"{on_h:02d}:{on_m:02d}:00"
+        on_dur = (off_h * 60 + off_m - on_h * 60 - on_m) % (24 * 60)
+        off_dur = 24 * 60 - on_dur
+        on_dur_h = max(1, round(on_dur / 60))
+        off_dur_h = max(1, round(off_dur / 60))
+        cycle = f"ON  H{on_dur_h}\nOFF H{off_dur_h}"
+    else:
+        raise ValueError(f"Unknown schedule_type: {req.schedule_type!r}")
+
+    return (
+        f"BEGIN {begin_date} {begin_time}\n"
+        f"END   {end_date} 23:59:00\n"
+        f"{cycle}\n"
+    )
+
+
+@app.post("/api/schedule")
+def set_schedule(req: ScheduleRequest):
+    try:
+        wpi_content = _build_wpi_content(req)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+    wittypi_cfg = config.get("wittypi", {})
+    schedules_dir = Path(wittypi_cfg.get("schedules_dir", "/home/pi/wittypi/schedules"))
+    run_script = wittypi_cfg.get("run_script", "/home/pi/wittypi/runScript.sh")
+
+    try:
+        schedules_dir.mkdir(parents=True, exist_ok=True)
+        wpi_file = schedules_dir / "birdnet.wpi"
+        wpi_file.write_text(wpi_content)
+        logger.info("Wrote WittyPi schedule to %s", wpi_file)
+    except OSError as exc:
+        logger.error("Failed to write schedule file: %s", exc)
+        return JSONResponse({"error": f"Failed to write schedule: {exc}"}, status_code=500)
+
+    try:
+        result = subprocess.run(
+            ["sudo", run_script, "birdnet"],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode != 0:
+            logger.error("runScript.sh stderr: %s", result.stderr)
+            return JSONResponse(
+                {"error": f"runScript.sh failed: {result.stderr.strip()}"},
+                status_code=500
+            )
+        logger.info("runScript.sh stdout: %s", result.stdout)
+    except FileNotFoundError:
+        logger.warning("runScript.sh not found — schedule file written but not applied")
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"error": "runScript.sh timed out"}, status_code=500)
+
+    return {"status": "ok"}
 
 
 def main():

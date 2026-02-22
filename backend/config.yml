@@ -26,3 +26,8 @@ api:
 
 # Data directory (relative to project root)
 data_dir: "data"
+
+# WittyPi HAT schedule control
+wittypi:
+  schedules_dir: "/home/pi/wittypi/schedules"
+  run_script: "/home/pi/wittypi/runScript.sh"

@@ -10,7 +10,7 @@ export function useFetchBirdData() {
     const latestObservationData = ref((null));
     const recentObservationsData = ref([]);
     const summaryData = ref({});
-    const latestObservationimageUrl = ref("/default_bird.webp"); // You might need to add this asset
+    const latestObservationimageUrl = ref("/default_bird.webp");
 
     const detailedBirdActivityError = ref(null);
     const hourlyBirdActivityError = ref(null);
@@ -19,14 +19,30 @@ export function useFetchBirdData() {
     const summaryError = ref(null);
 
 
+    // Transform raw detection rows → [{ species, hourlyActivity: [24 counts] }]
+    const transformToHourlyActivity = (detections) => {
+        const map = {};
+        for (const det of detections) {
+            const species = det.common_name || det.scientific_name;
+            if (!map[species]) {
+                map[species] = { species, hourlyActivity: new Array(24).fill(0) };
+            }
+            const hour = parseInt((det.time || '').split(':')[0], 10);
+            if (hour >= 0 && hour < 24) {
+                map[species].hourlyActivity[hour]++;
+            }
+        }
+        return Object.values(map);
+    };
+
     const fetchChartsData = async (date) => {
         logger.info('Fetching charts data', { date });
         try {
             const [hourlyBirdActivityResponse, detailedBirdActivityResponse] =
                 await Promise.all([
-                    api.get('/activity/hourly', { params: { date } })
+                    api.get('/hourly', { params: { date } })
                         .catch(error => ({ error })),
-                    api.get('/activity/overview', { params: { date } })
+                    api.get('/detections', { params: { date, limit: 1000 } })
                         .catch(error => ({ error }))
                 ]);
 
@@ -42,7 +58,7 @@ export function useFetchBirdData() {
                 detailedBirdActivityError.value = "Failed to fetch detailed activity data.";
                 detailedBirdActivityData.value = [];
             } else {
-                detailedBirdActivityData.value = detailedBirdActivityResponse.data;
+                detailedBirdActivityData.value = transformToHourlyActivity(detailedBirdActivityResponse.data);
                 detailedBirdActivityError.value = null;
             }
 
@@ -59,16 +75,16 @@ export function useFetchBirdData() {
             fetchChartsData(today);
 
             const [latestObsResp, recentObsResp, summaryResp] = await Promise.all([
-                api.get('/observations/latest').catch(error => ({ error })),
-                api.get('/observations/recent').catch(error => ({ error })),
-                api.get('/observations/summary').catch(error => ({ error }))
+                api.get('/recent', { params: { limit: 1 } }).catch(error => ({ error })),
+                api.get('/recent').catch(error => ({ error })),
+                api.get('/overview').catch(error => ({ error }))
             ]);
 
             if (latestObsResp.error) {
                 latestObservationError.value = "Failed to fetch latest observation.";
                 latestObservationData.value = null;
             } else {
-                latestObservationData.value = latestObsResp.data;
+                latestObservationData.value = latestObsResp.data?.[0] ?? null;
                 latestObservationError.value = null;
             }
 
@@ -88,15 +104,18 @@ export function useFetchBirdData() {
                 summaryError.value = null;
             }
 
-
             if (latestObservationData.value) {
-                // Fetch wikimedia image if available
                 try {
-                    const wikimediaImageResponse = await api.get('/wikimedia_image', {
-                        params: { species: latestObservationData.value.common_name }
-                    });
-                    if (wikimediaImageResponse.data?.imageUrl) {
-                        latestObservationimageUrl.value = wikimediaImageResponse.data.imageUrl;
+                    const species = latestObservationData.value.common_name || latestObservationData.value.scientific_name;
+                    const resp = await fetch(
+                        `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json` +
+                        `&piprop=thumbnail&pithumbsize=400&titles=${encodeURIComponent(species)}&origin=*`
+                    );
+                    const json = await resp.json();
+                    const pages = json.query?.pages ?? {};
+                    const page = Object.values(pages)[0];
+                    if (page?.thumbnail?.source) {
+                        latestObservationimageUrl.value = page.thumbnail.source;
                     }
                 } catch (e) {
                     logger.warn('Failed to fetch wikimedia image', e);
