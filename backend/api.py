@@ -210,20 +210,24 @@ def set_schedule(req: ScheduleRequest):
 
     wittypi_cfg = config.get("wittypi", {})
     schedules_dir = Path(wittypi_cfg.get("schedules_dir", "/home/pi/wittypi/schedules"))
+    wittypi_dir = schedules_dir.parent  # /home/pi/wittypi/
     run_script = wittypi_cfg.get("run_script", "/home/pi/wittypi/runScript.sh")
 
     try:
         schedules_dir.mkdir(parents=True, exist_ok=True)
-        wpi_file = schedules_dir / "birdnet.wpi"
-        wpi_file.write_text(wpi_content)
-        logger.info("Wrote WittyPi schedule to %s", wpi_file)
+        # Named copy — used by /api/setup-complete to detect an active schedule
+        (schedules_dir / "birdnet.wpi").write_text(wpi_content)
+        # Active schedule file that runScript.sh reads
+        (wittypi_dir / "schedule.wpi").write_text(wpi_content)
+        logger.info("Wrote WittyPi schedule to %s and %s/schedule.wpi",
+                    schedules_dir / "birdnet.wpi", wittypi_dir)
     except OSError as exc:
         logger.error("Failed to write schedule file: %s", exc)
         return JSONResponse({"error": f"Failed to write schedule: {exc}"}, status_code=500)
 
     try:
         result = subprocess.run(
-            ["sudo", run_script, "birdnet"],
+            ["sudo", run_script],  # no argument; reads schedule.wpi from wittypi root
             capture_output=True, text=True, timeout=30
         )
         if result.returncode != 0:
