@@ -52,7 +52,7 @@
          <div v-if="state === 0">
             <button class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors disabled:bg-[#e8a0c0] disabled:cursor-not-allowed" @click="state = 1">Next</button>
          </div>
-         <div v-if="state === 1" class="flex items-center gap-6">
+         <div v-if="state === 1" class="flex items-center justify-between gap-6">
             <button class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors disabled:bg-[#e8a0c0] disabled:cursor-not-allowed" @click="state = 0">Back</button>
             <button class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors disabled:bg-[#e8a0c0] disabled:cursor-not-allowed" :disabled="isSubmitting" @click="submitSchedule">
                 {{ isSubmitting ? 'Submitting...' : 'Next' }}

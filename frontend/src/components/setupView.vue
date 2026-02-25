@@ -11,13 +11,13 @@
       Setup ->
     </button>
 
-    <div v-if="setupComplete && socketStatus === 'Connected'" class="flex items-center gap-3">
+    <div v-if="setupComplete && socketStatus === 'Connected'" class="flex items-center justify-between gap-3">
       <button @click="$router.push('/dashboard')"
-        class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors">
+        class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors cursor-pointer">
         Start ->
       </button>
       <button @click="resetData" :disabled="isResetting"
-        class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xl py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xl py-3 px-6 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
         Reset
       </button>
     </div>
