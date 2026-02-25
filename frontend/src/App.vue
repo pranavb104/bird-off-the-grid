@@ -72,7 +72,7 @@ export default {
       initializeWebSocket() {
         const wsUrl =
             process.env.VUE_APP_WS_URL ||
-            `ws://${window.location.hostname}:7007/ws`;
+            `ws://${window.location.host}/ws`;
         this.socket = new WebSocket(wsUrl);
 
         // Event handler for when the connection is established.
