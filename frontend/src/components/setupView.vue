@@ -1,11 +1,28 @@
 <template>
-  <div class="container">
-        <h2>BirdNet OffGrid</h2>
-        <p class="message">Your Device is {{ socketStatusText }}</p>
-        <div class="time-display"> {{ localTime }} </div>
-        <br/>
-        <br/>
-        <button v-if="socketStatus === 'Connected'" class="send-button" v-on:click="goToScriptPage">Setup -></button>
+  <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+    <h2 class="text-3xl font-bold text-[#d63384] mb-2">BirdNet OffGrid</h2>
+    <p class="text-lg text-gray-500 mb-4">Your Device is {{ socketStatus }}</p>
+    <div class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300 mb-6">
+      {{ localTime }}
+    </div>
+
+    <button v-if="!setupComplete && socketStatus === 'Connected'" @click="goToScriptPage"
+      class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors">
+      Setup ->
+    </button>
+
+    <div v-if="setupComplete && socketStatus === 'Connected'" class="flex items-center justify-between gap-3">
+      <button @click="$router.push('/dashboard')"
+        class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors cursor-pointer">
+        Start ->
+      </button>
+      <button @click="resetData" :disabled="isResetting"
+        class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xl py-3 px-6 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+        Reset
+      </button>
+    </div>
+
+    <p v-if="resetMessage" class="text-green-600 text-sm mt-3">{{ resetMessage }}</p>
   </div>
 </template>
 
@@ -27,7 +44,9 @@ export default {
 
   data() {
     return {
-      receivedMessage: null
+      setupComplete: false,
+      isResetting: false,
+      resetMessage: '',
     };
   },
 
@@ -35,19 +54,11 @@ export default {
     this.checkSetupComplete();
   },
 
-  computed: {
-    socketStatusText() {
-      return this.socketStatus;
-    }
-  },
-
   methods: {
     async checkSetupComplete() {
       try {
         const resp = await api.get('/setup-complete');
-        if (resp.data.complete) {
-          this.$router.push('/dashboard');
-        }
+        this.setupComplete = resp.data.complete;
       } catch {
         // Pi not reachable yet — stay on setup screen
       }
@@ -55,51 +66,17 @@ export default {
     goToScriptPage() {
       this.$router.push('/scriptView');
     },
+    async resetData() {
+      this.isResetting = true;
+      this.resetMessage = '';
+      try {
+        await api.post('/reset');
+        this.setupComplete = false;
+        this.resetMessage = 'Data reset successfully.';
+      } catch {
+        this.resetMessage = 'Reset failed. Please try again.';
+      }
+    },
   }
 };
 </script>
-
-<style scoped>
-
-    .container {
-      background: #fff;
-      padding: 20px;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      max-width: 500px;
-      width: 100%;
-    }
-    h2 {
-      font-size: 2rem;
-      color: #d63384;
-      margin-bottom: 0.5rem;
-    }
-    .message {
-      font-size: 1.25rem;
-      color: #666;
-      margin-bottom: 2rem;
-    }
-    .time-display {
-      font-size: 1.125rem;
-      font-weight: 600;
-      color: #495057;
-      background-color: #e9ecef;
-      padding: 10px 20px;
-      border-radius: 8px;
-      border: 1px solid #ced4da;
-  }
-
-  .send-button {
-      background-color: #d63384;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      font-size: 1.25rem;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    .send-button:hover {
-      background-color: #c61f6e;
-    }
-</style>

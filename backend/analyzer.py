@@ -30,7 +30,7 @@ import database
 import spectrogram as spec_module
 
 logging.basicConfig(
-    level=logging.WARNING,
+    level=logging.INFO,
     format="%(asctime)s [analyzer] %(levelname)s %(message)s",
 )
 logging.getLogger("analyzer").setLevel(logging.DEBUG)

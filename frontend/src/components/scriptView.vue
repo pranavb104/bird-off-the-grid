@@ -1,61 +1,60 @@
 <template>
-  <div class="container">
+  <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
     <!-- Header -->
-    <h2>Schedule Your Script</h2>
+    <h2 class="text-3xl font-bold text-[#d63384] mb-2">Schedule Your Script</h2>
     <!-- Form Body -->
-    <main class="main-content">
-        <div v-if="state === 0" class="form-section">
+    <main class="p-4">
+        <div v-if="state === 0" class="flex flex-col gap-6">
             <!-- First Startup Section -->
-            <div class="input-group">
-                <label class="label">The first startup occurs at:</label>
-                <div class="input-container">
-                    <input type="datetime-local" v-model="startDate" class="form-input">
+            <div class="flex flex-col">
+                <label class="text-lg text-gray-700">The first startup occurs at:</label>
+                <div class="flex flex-col gap-2 mt-2">
+                    <input type="datetime-local" v-model="startDate" class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300">
                 </div>
             </div>
             <!-- Continue Running Until Section -->
-            <div class="input-group">
-                <label class="label">The script will run until:</label>
-                <div class="input-container">
-                    <input type="datetime-local" v-model="endDate" class="form-input">
+            <div class="flex flex-col">
+                <label class="text-lg text-gray-700">The script will run until:</label>
+                <div class="flex flex-col gap-2 mt-2">
+                    <input type="datetime-local" v-model="endDate" class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300">
                 </div>
             </div>
         </div>
-        <div v-if="state === 1" class="form-section">
+        <div v-if="state === 1" class="flex flex-col gap-6">
             <!-- Set on/off times -->
-            <div class="input-group">
-                <label class="label">Select on/off time:</label>
-                <div class="input-container">
-                    <select class="form-input" v-model="selected">
+            <div class="flex flex-col">
+                <label class="text-lg text-gray-700">Select on/off time:</label>
+                <div class="flex flex-col gap-2 mt-2">
+                    <select class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300" v-model="selected">
                         <option v-for="option in options" :key="option.value" :value="option.value">
                             {{ option.text }}
                         </option>
                     </select>
                 </div>
-                <div class="selected-option"> {{ options.find(option => option.value === selected)?.info }}</div>
+                <div class="mt-3 text-base italic text-[#c61f6e]"> {{ options.find(option => option.value === selected)?.info }}</div>
             </div>
             <!-- Custom time inputs shown only for option3 -->
-            <div v-if="selected === 'option3'" class="input-group">
-                <label class="label">On time:</label>
-                <div class="input-container">
-                    <input type="time" v-model="onTime" class="form-input">
+            <div v-if="selected === 'option3'" class="flex flex-col">
+                <label class="text-lg text-gray-700">On time:</label>
+                <div class="flex flex-col gap-2 mt-2">
+                    <input type="time" v-model="onTime" class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300">
                 </div>
-                <label class="label" style="margin-top: 0.75rem;">Off time:</label>
-                <div class="input-container">
-                    <input type="time" v-model="offTime" class="form-input">
+                <label class="text-lg text-gray-700" style="margin-top: 0.75rem;">Off time:</label>
+                <div class="flex flex-col gap-2 mt-2">
+                    <input type="time" v-model="offTime" class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300">
                 </div>
             </div>
-            <div v-if="submitError" class="error-message">{{ submitError }}</div>
+            <div v-if="submitError" class="text-red-500 text-sm mt-2">{{ submitError }}</div>
         </div>
             <br/>
             <br/>
         <!-- Navigation Buttons -->
          <div v-if="state === 0">
-            <button class="button" @click="state = 1">Next</button>
+            <button class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors disabled:bg-[#e8a0c0] disabled:cursor-not-allowed" @click="state = 1">Next</button>
          </div>
-         <div v-if="state === 1">
-            <button class="button" @click="state = 0">Back</button>
-            <span style="width: 25px; display: inline-block;"></span>
-            <button class="button" :disabled="isSubmitting" @click="submitSchedule">
+         <div v-if="state === 1" class="flex items-center justify-between gap-6">
+            <button class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors disabled:bg-[#e8a0c0] disabled:cursor-not-allowed" @click="state = 0">Back</button>
+            <button class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors disabled:bg-[#e8a0c0] disabled:cursor-not-allowed" :disabled="isSubmitting" @click="submitSchedule">
                 {{ isSubmitting ? 'Submitting...' : 'Next' }}
             </button>
          </div>
@@ -136,96 +135,3 @@ export default {
 
 }
 </script>
-
-<style scoped>
-
-    .container {
-        background: #fff;
-        padding: 20px;
-        border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        max-width: 500px;
-        width: 100%;
-    }
-
-    h2 {
-        font-size: 2rem;
-        color: #d63384;
-        margin-bottom: 0.5rem;
-
-    }
-
-    .main-content {
-        padding: 1rem;
-    }
-
-    .form-section {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem; /* space-y-6 */
-    }
-
-    .input-container {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem; /* space-y-2 */
-        margin-top: 0.5rem;
-    }
-
-    .label {
-        font-size: 1.25rem; /* text-lg */
-        display: block;
-        color: var(--gray-700);
-    }
-
-    .form-input {
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #495057;
-        background-color: #e9ecef;
-        margin-top: 0.3rem;
-        padding: 10px 20px;
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-    }
-
-    .button {
-        background-color: #d63384;
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        font-size: 1.25rem;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
-    .button:hover {
-        background-color: #c61f6e;
-    }
-    .button:disabled {
-        background-color: #e8a0c0;
-        cursor: not-allowed;
-    }
-
-    .selected-option {
-        margin-top: 1rem;
-        font-size: 1rem;
-        font-style: italic;
-        color: #c61f6e;
-    }
-
-    .error-message {
-        color: #dc3545;
-        font-size: 0.9rem;
-        margin-top: 0.5rem;
-    }
-
-    /* Responsive Styles */
-    @media (min-width: 640px) {
-        .input-container {
-            flex-direction: row;
-            gap: 1rem; /* space-x-4 */
-        }
-    }
-
-</style>

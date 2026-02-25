@@ -210,20 +210,24 @@ def set_schedule(req: ScheduleRequest):
 
     wittypi_cfg = config.get("wittypi", {})
     schedules_dir = Path(wittypi_cfg.get("schedules_dir", "/home/pi/wittypi/schedules"))
+    wittypi_dir = schedules_dir.parent  # /home/pi/wittypi/
     run_script = wittypi_cfg.get("run_script", "/home/pi/wittypi/runScript.sh")
 
     try:
         schedules_dir.mkdir(parents=True, exist_ok=True)
-        wpi_file = schedules_dir / "birdnet.wpi"
-        wpi_file.write_text(wpi_content)
-        logger.info("Wrote WittyPi schedule to %s", wpi_file)
+        # Named copy — used by /api/setup-complete to detect an active schedule
+        (schedules_dir / "birdnet.wpi").write_text(wpi_content)
+        # Active schedule file that runScript.sh reads
+        (wittypi_dir / "schedule.wpi").write_text(wpi_content)
+        logger.info("Wrote WittyPi schedule to %s and %s/schedule.wpi",
+                    schedules_dir / "birdnet.wpi", wittypi_dir)
     except OSError as exc:
         logger.error("Failed to write schedule file: %s", exc)
         return JSONResponse({"error": f"Failed to write schedule: {exc}"}, status_code=500)
 
     try:
         result = subprocess.run(
-            ["sudo", run_script, "birdnet"],
+            ["sudo", run_script],  # no argument; reads schedule.wpi from wittypi root
             capture_output=True, text=True, timeout=30
         )
         if result.returncode != 0:
@@ -251,6 +255,72 @@ def setup_complete():
     wittypi_cfg = config.get("wittypi", {})
     schedules_dir = Path(wittypi_cfg.get("schedules_dir", "/home/pi/wittypi/schedules"))
     return {"complete": (schedules_dir / "birdnet.wpi").is_file()}
+
+
+@app.post("/api/reset")
+def reset_data():
+    import shutil
+
+    logger.info("=== /api/reset called ===")
+
+    wittypi_cfg = config.get("wittypi", {})
+    schedules_dir = Path(wittypi_cfg.get("schedules_dir", "/home/pi/wittypi/schedules"))
+    wpi_file = schedules_dir / "birdnet.wpi"
+    logger.info("data_dir=%s", data_dir)
+    logger.info("schedules_dir=%s  exists=%s", schedules_dir, schedules_dir.exists())
+    logger.info("wpi_file=%s  exists=%s", wpi_file, wpi_file.exists())
+
+    errors = []
+
+    for subdir in ["detections", "StreamData", "bird_images"]:
+        target = data_dir / subdir
+        logger.info("subdir %s  exists=%s", target, target.exists())
+        if target.exists():
+            try:
+                shutil.rmtree(target)
+                logger.info("deleted %s", target)
+            except OSError as e:
+                logger.error("failed to delete %s: %s", target, e)
+                errors.append(str(e))
+        try:
+            target.mkdir(parents=True, exist_ok=True)
+            logger.info("recreated %s", target)
+        except OSError as e:
+            logger.error("failed to recreate %s: %s", target, e)
+            errors.append(str(e))
+
+    db_file = data_dir / "birds.db"
+    logger.info("db_file=%s  exists=%s", db_file, db_file.exists())
+    if db_file.exists():
+        try:
+            db_file.unlink()
+            logger.info("deleted %s", db_file)
+        except OSError as e:
+            logger.error("failed to delete %s: %s", db_file, e)
+            errors.append(str(e))
+
+    # Recreate the DB with an empty schema so live services don't hit "no such table"
+    try:
+        database.init_db(str(data_dir))
+        logger.info("re-initialized empty database at %s", db_file)
+    except Exception as e:
+        logger.error("failed to reinitialize database: %s", e)
+        errors.append(str(e))
+
+    if wpi_file.exists():
+        try:
+            wpi_file.unlink()
+            logger.info("deleted %s", wpi_file)
+        except OSError as e:
+            logger.error("failed to delete %s: %s", wpi_file, e)
+            errors.append(str(e))
+
+    if errors:
+        logger.error("reset completed with errors: %s", errors)
+        return JSONResponse({"error": "; ".join(errors)}, status_code=500)
+
+    logger.info("reset completed successfully")
+    return {"status": "ok"}
 
 
 # ---------------------------------------------------------------------------
