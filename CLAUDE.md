@@ -25,12 +25,18 @@ python backend/recorder.py    # captures WAV files → data/StreamData/
 python backend/analyzer.py    # watches StreamData/, runs inference
 python backend/api.py         # FastAPI on port 7007
 
-# Start/stop all three services together (Pi)
-./backend/run.sh start
-./backend/run.sh stop
-./backend/run.sh restart
+# Debug mode — runs recorder, analyzer, and API directly (no Docker, no frontend)
+# Use this to debug the frontend from a separate device pointed at the Pi's API
+./backend/debug.sh start
+./backend/debug.sh stop
+./backend/debug.sh restart
+# Logs written to backend/logs/{recorder,analyzer,api}.log
 
-# Full Pi install (sets up venv, systemd services, PulseAudio)
+# Production — full stack via Docker Compose (from repo root)
+docker compose up -d
+docker compose down
+
+# Full Pi install (sets up venv and system packages)
 ./backend/install.sh
 ```
 
@@ -106,7 +112,7 @@ All model paths in `config.yml` are relative to the `backend/` directory (i.e. `
 
 ### Pi deployment
 
-`install.sh` creates three systemd services: `birdnet-recorder`, `birdnet-analyzer`, `birdnet-api`. The venv is at `~/birdnet-venv` (not inside the repo). On the Pi, `ai-edge-litert` may not be available — the interpreter import falls back to `tflite_runtime` then `tensorflow.lite`.
+`install.sh` sets up the Python venv (`~/birdnet-venv`), installs system packages, and verifies the model files. No systemd services are created. Use `debug.sh` for direct process management or Docker Compose for production. On the Pi, `ai-edge-litert` may not be available — the interpreter import falls back to `tflite_runtime` then `tensorflow.lite`.
 
 ## Important Notes
 - The first commit is to main and thereafter all commits are to master branch 
