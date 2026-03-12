@@ -1,1 +1,27 @@
 @import "tailwindcss";
+
+@theme {
+  /* Brand */
+  --color-primary:          #d63384;  /* buttons, headings */
+  --color-primary-hover:    #c61f6e;  /* button hover state */
+  --color-primary-disabled: #e8a0c0;  /* button disabled state */
+
+  /* Layout */
+  --color-background: #f3f4f6;  /* dashboard / app background */
+  --color-card:       #ffffff;  /* card / panel surface */
+
+  /* Text */
+  --color-text:           #1f2937;  /* gray-800 — primary text */
+  --color-text-secondary: #4b5563;  /* gray-600 — labels, inputs */
+  --color-text-muted:     #6b7280;  /* gray-500 — secondary / placeholder */
+  --color-text-subtle:    #9ca3af;  /* gray-400 — timestamps, minor info */
+
+  /* Borders & inputs */
+  --color-border:    #d1d5db;  /* gray-300 */
+  --color-input-bg:  #f3f4f6;  /* gray-100 — form field background */
+
+  /* Semantic states */
+  --color-success: #16a34a;  /* green-600 — play buttons, confirmations */
+  --color-error:   #ef4444;  /* red-500  — error messages */
+  --color-info:    #3b82f6;  /* blue-500 — info actions */
+}
