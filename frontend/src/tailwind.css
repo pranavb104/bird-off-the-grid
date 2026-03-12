@@ -2,26 +2,84 @@
 
 @theme {
   /* Brand */
-  --color-primary:          #d63384;  /* buttons, headings */
-  --color-primary-hover:    #c61f6e;  /* button hover state */
-  --color-primary-disabled: #e8a0c0;  /* button disabled state */
+  --color-primary:          #d63384;  /* buttons, accents, highlights */
+  --color-primary-hover:    #e84393;  /* button hover state */
+  --color-primary-disabled: #6b1a42;  /* button disabled state */
 
   /* Layout */
-  --color-background: #f3f4f6;  /* dashboard / app background */
-  --color-card:       #ffffff;  /* card / panel surface */
+  --color-background:  #0d0d0d;  /* app background */
+  --color-card:        #1a1a1a;  /* card / panel surfaces */
+  --color-card-alt:    #141414;  /* nested / secondary cards */
 
   /* Text */
-  --color-text:           #1f2937;  /* gray-800 — primary text */
-  --color-text-secondary: #4b5563;  /* gray-600 — labels, inputs */
-  --color-text-muted:     #6b7280;  /* gray-500 — secondary / placeholder */
-  --color-text-subtle:    #9ca3af;  /* gray-400 — timestamps, minor info */
+  --color-text:           #f0f0f0;  /* primary text */
+  --color-text-secondary: #b0b0b0;  /* secondary text */
+  --color-text-muted:     #707070;  /* muted / placeholder */
 
   /* Borders & inputs */
-  --color-border:    #d1d5db;  /* gray-300 */
-  --color-input-bg:  #f3f4f6;  /* gray-100 — form field background */
+  --color-border:        #2a2a2a;  /* card borders */
+  --color-border-accent: #d63384;  /* accent / dithered borders */
+  --color-input-bg:      #111111;  /* input backgrounds */
 
   /* Semantic states */
-  --color-success: #16a34a;  /* green-600 — play buttons, confirmations */
-  --color-error:   #ef4444;  /* red-500  — error messages */
-  --color-info:    #3b82f6;  /* blue-500 — info actions */
+  --color-success: #3ecf6e;  /* success states */
+  --color-error:   #ef4444;  /* error states */
+  --color-info:    #60a5fa;  /* info states */
+}
+
+@layer utilities {
+  /* Subtle dot grain overlay on card backgrounds */
+  .dither-card {
+    position: relative;
+  }
+  .dither-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 4px 4px;
+    pointer-events: none;
+    opacity: 1;
+  }
+
+  /* Dot pattern revealed on hover */
+  .dither-btn {
+    position: relative;
+    overflow: hidden;
+  }
+  .dither-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
+    background-size: 3px 3px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+  .dither-btn:hover::after {
+    opacity: 1;
+  }
+
+  /* Magenta-tinted dot grain on section headers */
+  .dither-header {
+    position: relative;
+  }
+  .dither-header::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: radial-gradient(circle, rgba(214,51,132,0.10) 1px, transparent 1px);
+    background-size: 4px 4px;
+    pointer-events: none;
+    opacity: 1;
+  }
+
+  /* Pixel-dash border effect */
+  .dither-border {
+    border: 1px solid var(--color-border);
+  }
 }

@@ -93,6 +93,23 @@ Vue 3 (Options API) with Vue Router. Three routes/views:
 
 `frontend/src/services/api.js` hardcodes the Pi's IP (`192.168.1.203`) and port `7100`. Update this when the Pi's address changes. The app also opens a WebSocket to `ws://192.168.1.203:7100/ws` from `App.vue`.
 
+### UI Theme
+
+Dark theme with magenta accent. Color tokens are defined in `frontend/src/tailwind.css` under `@theme` and consumed via `bg-[var(--color-*)]` / `text-[var(--color-*)]` Tailwind classes throughout components. Key tokens:
+
+- `--color-background` `#0d0d0d` — app/dashboard background
+- `--color-card` `#1a1a1a` / `--color-card-alt` `#141414` — card surfaces
+- `--color-primary` `#d63384` — buttons, accents
+- `--color-text` / `--color-text-secondary` / `--color-text-muted` — text hierarchy
+
+Four CSS-only dithering utility classes (no libraries) are defined in `@layer utilities` in `tailwind.css`:
+- `.dither-card` — subtle white dot grain on card backgrounds via `::after`
+- `.dither-btn` — dot overlay revealed on hover via `::after` + `opacity` transition
+- `.dither-header` — magenta-tinted dot grain on section headers via `::after`
+- `.dither-border` — `1px solid var(--color-border)` card borders
+
+All dithering uses `radial-gradient` dot patterns and `pointer-events: none` so overlays don't block interaction.
+
 ### Key configuration (`backend/config.yml`)
 
 ```yaml

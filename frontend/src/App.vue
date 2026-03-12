@@ -156,7 +156,7 @@ export default {
   .dashboardView {
     min-height: 100vh;
     padding: 12px;
-    background-color: #f3f4f6; /* light gray background */
+    background-color: var(--color-background);
   }
 
   @media (min-width: 1024px) {
