@@ -95,20 +95,28 @@ Vue 3 (Options API) with Vue Router. Three routes/views:
 
 ### UI Theme
 
-Dark theme with magenta accent. Color tokens are defined in `frontend/src/tailwind.css` under `@theme` and consumed via `bg-[var(--color-*)]` / `text-[var(--color-*)]` Tailwind classes throughout components. Key tokens:
+Monochrome retro theme (cream/ink) with IBM Plex fonts and Bayer 4×4 canvas-based dithered shadows. Color tokens are defined in `frontend/src/tailwind.css` under `@theme` and consumed via `bg-[var(--color-*)]` / `text-[var(--color-*)]` Tailwind classes. Key tokens:
 
-- `--color-background` `#0d0d0d` — app/dashboard background
-- `--color-card` `#1a1a1a` / `--color-card-alt` `#141414` — card surfaces
-- `--color-primary` `#d63384` — buttons, accents
-- `--color-text` / `--color-text-secondary` / `--color-text-muted` — text hierarchy
+- `--color-background` `#f0ece3` — paper (page background, set on `body`)
+- `--color-card` `#f0ece3` / `--color-card-alt` `#e8e4db` — card surfaces (distinguished by border)
+- `--color-primary` `#0a0a0a` — ink (buttons, accents)
+- `--color-text` `#0a0a0a` / `--color-text-secondary` `#333333` / `--color-text-muted` `#888888` — text hierarchy
+- `--color-border` `#0a0a0a` — solid black borders
 
-Four CSS-only dithering utility classes (no libraries) are defined in `@layer utilities` in `tailwind.css`:
-- `.dither-card` — subtle white dot grain on card backgrounds via `::after`
-- `.dither-btn` — dot overlay revealed on hover via `::after` + `opacity` transition
-- `.dither-header` — magenta-tinted dot grain on section headers via `::after`
-- `.dither-border` — `1px solid var(--color-border)` card borders
+Utility classes in `@layer utilities` in `tailwind.css`:
+- `.d-card` — card with 1.5px ink border, 2px radius, `position: relative`
+- `.d-btn` / `.d-btn.outline` — IBM Plex Mono uppercase button with hover/active translate
+- `.d-input` — IBM Plex Mono styled input field
+- `.d-section-label` — uppercase muted section heading with bottom border
 
-All dithering uses `radial-gradient` dot patterns and `pointer-events: none` so overlays don't block interaction.
+Dither shadow system (canvas-based Bayer 4×4 ordered dithering):
+- `frontend/src/composables/useDither.js` — `renderDitherShadow()` and `renderDitherFill()` draw pixel-pattern shadows/fills onto `<canvas>` elements
+- `frontend/src/components/DitherShadow.vue` — drop-in component, place inside any `.d-card`; renders a canvas at `top:4px; left:2px; z-index:-1` behind the card. Uses `ResizeObserver` to auto-resize.
+- `frontend/src/components/DSelect.vue` — custom dropdown with dithered hover fills, replaces native `<select>`
+
+**Important**: The page background must be on `body` (not `#app`) so that the `z-index: -1` shadow canvases remain visible above the body background but below card content.
+
+Fonts are self-hosted as woff2 files in `frontend/public/fonts/` (IBM Plex Mono + IBM Plex Sans, weights 400/500/700), loaded via `@font-face` in `index.html`. No external CDN dependency.
 
 ### Key configuration (`backend/config.yml`)
 
