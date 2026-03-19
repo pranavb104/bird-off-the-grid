@@ -122,32 +122,33 @@ export default {
 
 <style>
 
+  /* Move background to body so z-index:-1 dither shadows remain visible */
+  body {
+    background: var(--color-background);
+    margin: 0;
+  }
+
   /* Global Styles */
   #app {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: 'IBM Plex Sans', sans-serif;
     margin: 0px;
-    background: url(assets/bird-bkg.png);
-    background-repeat: no-repeat ;
-    background-size: cover;
     min-height: 100vh;
     overflow-y: auto;
   }
 
   .setupView {
-      /* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; */
       display: flex;
       justify-content: center;
-      align-items: center; 
+      align-items: center;
       min-height: 100vh;
       text-align: center;
       padding: 20px;
     }
 
   .scriptView {
-    /* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; */
     display: flex;
     justify-content: center;
-    align-items: center; 
+    align-items: center;
     min-height: 100vh;
     text-align: center;
     padding: 20px;
@@ -156,7 +157,6 @@ export default {
   .dashboardView {
     min-height: 100vh;
     padding: 12px;
-    background-color: var(--color-background);
   }
 
   @media (min-width: 1024px) {

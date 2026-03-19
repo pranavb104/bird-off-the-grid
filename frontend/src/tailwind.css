@@ -2,84 +2,99 @@
 
 @theme {
   /* Brand */
-  --color-primary:          #d63384;  /* buttons, accents, highlights */
-  --color-primary-hover:    #e84393;  /* button hover state */
-  --color-primary-disabled: #6b1a42;  /* button disabled state */
+  --color-primary:          #0a0a0a;
+  --color-primary-hover:    #333333;
+  --color-primary-disabled: #aaaaaa;
 
   /* Layout */
-  --color-background:  #0d0d0d;  /* app background */
-  --color-card:        #1a1a1a;  /* card / panel surfaces */
-  --color-card-alt:    #141414;  /* nested / secondary cards */
+  --color-background:  #f0ece3;
+  --color-card:        #f0ece3;
+  --color-card-alt:    #e8e4db;
 
   /* Text */
-  --color-text:           #f0f0f0;  /* primary text */
-  --color-text-secondary: #b0b0b0;  /* secondary text */
-  --color-text-muted:     #707070;  /* muted / placeholder */
+  --color-text:           #0a0a0a;
+  --color-text-secondary: #333333;
+  --color-text-muted:     #888888;
 
   /* Borders & inputs */
-  --color-border:        #2a2a2a;  /* card borders */
-  --color-border-accent: #d63384;  /* accent / dithered borders */
-  --color-input-bg:      #111111;  /* input backgrounds */
+  --color-border:        #0a0a0a;
+  --color-border-accent: #0a0a0a;
+  --color-input-bg:      #f0ece3;
 
   /* Semantic states */
-  --color-success: #3ecf6e;  /* success states */
-  --color-error:   #ef4444;  /* error states */
-  --color-info:    #60a5fa;  /* info states */
+  --color-success: #0a0a0a;
+  --color-error:   #c0392b;
+  --color-info:    #555555;
 }
 
 @layer utilities {
-  /* Subtle dot grain overlay on card backgrounds */
-  .dither-card {
+  /* Card base */
+  .d-card {
+    background: var(--color-card);
+    border: 1.5px solid var(--color-border);
+    border-radius: 2px;
     position: relative;
   }
-  .dither-card::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
-    background-size: 4px 4px;
-    pointer-events: none;
-    opacity: 1;
-  }
 
-  /* Dot pattern revealed on hover */
-  .dither-btn {
+  /* Button base */
+  .d-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-primary);
+    color: var(--color-card);
+    border: 1.5px solid var(--color-border);
+    border-radius: 2px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 10px 22px;
+    cursor: pointer;
     position: relative;
-    overflow: hidden;
-  }
-  .dither-btn::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background-image: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
-    background-size: 3px 3px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 150ms ease;
-  }
-  .dither-btn:hover::after {
-    opacity: 1;
+    transition: transform 0.08s ease;
+    user-select: none;
+    outline: none;
   }
 
-  /* Magenta-tinted dot grain on section headers */
-  .dither-header {
-    position: relative;
-  }
-  .dither-header::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background-image: radial-gradient(circle, rgba(214,51,132,0.10) 1px, transparent 1px);
-    background-size: 4px 4px;
-    pointer-events: none;
-    opacity: 1;
+  .d-btn:hover {
+    transform: translate(-1px, -1px);
   }
 
-  /* Pixel-dash border effect */
-  .dither-border {
-    border: 1px solid var(--color-border);
+  .d-btn:active {
+    transform: translate(2px, 2px);
+  }
+
+  .d-btn.outline {
+    background: var(--color-card);
+    color: var(--color-primary);
+  }
+
+  /* Input base */
+  .d-input {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    background: var(--color-card);
+    color: var(--color-text);
+    border: 1.5px solid var(--color-border);
+    border-radius: 2px;
+    padding: 10px 14px;
+    outline: none;
+    width: 100%;
+  }
+
+  /* Section label */
+  .d-section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 6px;
+    margin-bottom: 16px;
   }
 }

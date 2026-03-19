@@ -14,7 +14,7 @@
     >
       <div class="relative max-w-full max-w-[95vw]">
         <!-- Image + overlay container -->
-        <div class="dither-card dither-border relative bg-[var(--color-card)] rounded-lg shadow-xl overflow-hidden">
+        <div class="d-card relative overflow-hidden">
           <img
             :src="imageUrl"
             :alt="alt"
@@ -24,7 +24,7 @@
           <!-- Progress line — only when audio is present and playing/loaded -->
           <div
             v-if="audioUrl"
-            class="absolute top-0 bottom-0 w-0.5 bg-green-400 opacity-90 pointer-events-none transition-none"
+            class="absolute top-0 bottom-0 w-0.5 bg-[var(--color-text)] opacity-90 pointer-events-none transition-none"
             :style="{ left: (progress * 100) + '%' }"
           />
 
@@ -35,14 +35,14 @@
           >
             <button
               @click="toggleAudio"
-              class="text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors focus:outline-none w-5 flex items-center justify-center"
+              class="text-[var(--color-background)] hover:text-[var(--color-text-muted)] transition-colors focus:outline-none w-5 flex items-center justify-center"
             >
               <font-awesome-icon :icon="isPlaying ? ['fas', 'pause'] : ['fas', 'play']" />
             </button>
-            <div class="flex-1 h-1 bg-[var(--color-border)] rounded-full overflow-hidden cursor-pointer" @click="seekTo">
-              <div class="h-full bg-[var(--color-primary)] rounded-full" :style="{ width: (progress * 100) + '%' }"></div>
+            <div class="flex-1 h-1 bg-[var(--color-text-muted)] rounded-full overflow-hidden cursor-pointer" @click="seekTo">
+              <div class="h-full bg-[var(--color-background)] rounded-full" :style="{ width: (progress * 100) + '%' }"></div>
             </div>
-            <span class="text-[var(--color-text-secondary)] text-xs whitespace-nowrap">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
+            <span class="text-[var(--color-background)] text-xs whitespace-nowrap">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
           </div>
 
           <!-- No-audio indicator when modal opened without audio -->
@@ -50,7 +50,7 @@
             v-else
             class="absolute bottom-0 left-0 right-0 flex items-center justify-center px-3 py-1.5 bg-black/40"
           >
-            <span class="text-[var(--color-text-muted)] text-xs">No audio available</span>
+            <span class="text-[var(--color-background)] text-xs">No audio available</span>
           </div>
 
           <!-- Hidden audio element -->
@@ -67,7 +67,7 @@
         <!-- Close button (outside top-right corner) -->
         <button
           @click="close"
-          class="dither-btn absolute -top-2 -right-2 sm:-top-3 sm:-right-3 p-1 sm:p-1.5 rounded-full bg-[var(--color-card-alt)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)] hover:text-[var(--color-text)] transition-colors focus:outline-none shadow-lg"
+          class="d-btn absolute -top-2 -right-2 sm:-top-3 sm:-right-3 !p-1 sm:!p-1.5"
           title="Close"
         >
           <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">

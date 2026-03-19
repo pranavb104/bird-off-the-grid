@@ -1,13 +1,12 @@
 <template>
     <div class="dashboard container mx-auto px-4 py-6">
-        <h1 class="text-xl font-bold mb-4 text-[var(--color-text)] lg:text-3xl lg:mb-6">BirdNET Dashboard</h1>
+        <h1 class="text-xl font-bold mb-4 text-[var(--color-text)] lg:text-3xl lg:mb-6 font-['IBM_Plex_Mono']">BirdNET Dashboard</h1>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-4">
             <!-- Bird Activity Overview -->
-            <div class="dither-card dither-border bg-[var(--color-card)] rounded-lg shadow p-4 lg:col-span-3 h-[260px] lg:h-[375px]">
-                <div class="dither-header rounded mb-2 px-1">
-                  <h2 class="text-base font-semibold text-[var(--color-text-secondary)] lg:text-lg">Bird Activity Overview</h2>
-                </div>
+            <div class="d-card p-4 lg:col-span-3 h-[260px] lg:h-[375px]">
+                <DitherShadow />
+                <div class="d-section-label">Bird Activity Overview</div>
                 <div v-if="!isDataEmpty && !detailedBirdActivityError" class="flex h-[calc(100%-2rem)]">
                     <div class="w-full h-full" :class="isDesktop ? 'lg:w-1/3 lg:pr-2' : ''">
                         <canvas ref="totalObservationsChart" class="h-full w-full"></canvas>
@@ -25,10 +24,9 @@
             </div>
 
             <!-- Latest Observation -->
-            <div class="dither-card dither-border bg-[var(--color-card)] rounded-lg shadow p-4 lg:col-span-2 flex flex-col">
-                <div class="dither-header rounded mb-3 px-1">
-                  <h2 class="text-base font-semibold text-left text-[var(--color-text-secondary)] lg:text-lg">Latest Observation</h2>
-                </div>
+            <div class="d-card p-4 lg:col-span-2 flex flex-col">
+                <DitherShadow />
+                <div class="d-section-label">Latest Observation</div>
                 <div v-if="latestObservationData && !latestObservationError"
                     class="flex flex-row items-center space-x-3 w-full">
                     <!-- Bird avatar -->
@@ -43,7 +41,7 @@
                     </div>
                     <!-- Play button -->
                     <button @click="openLatestWithAudio"
-                        class="dither-btn shrink-0 bg-[var(--color-success)] hover:opacity-90 text-white rounded-full flex items-center justify-center w-11 h-11 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-success)] shadow-md">
+                        class="d-btn shrink-0 flex items-center justify-center w-11 h-11 !p-0 transition-all duration-300 focus:outline-none">
                         <font-awesome-icon :icon="['fas', 'play']" class="text-base ml-0.5" />
                     </button>
                 </div>
@@ -52,10 +50,9 @@
             </div>
 
             <!-- Observation Summary -->
-            <div class="dither-card dither-border bg-[var(--color-card)] rounded-lg shadow p-4">
-                <div class="dither-header rounded mb-2 px-1">
-                  <h2 class="text-base font-semibold text-[var(--color-text-secondary)] lg:text-lg">Observation Summary</h2>
-                </div>
+            <div class="d-card p-4">
+                <DitherShadow />
+                <div class="d-section-label">Observation Summary</div>
                 <div v-if="!summaryError">
                     <ul v-if="summaryData && Object.keys(summaryData).length" class="space-y-2 text-sm">
                          <li class="flex justify-between border-b border-[var(--color-border)] pb-1">
@@ -73,16 +70,15 @@
             </div>
 
             <!-- Recent Observations -->
-            <div class="dither-card dither-border bg-[var(--color-card)] rounded-lg shadow p-4 lg:col-span-2">
-                <div class="dither-header rounded mb-2 px-1">
-                  <h2 class="text-base font-semibold text-[var(--color-text-secondary)] lg:text-lg">Recent Observations</h2>
-                </div>
+            <div class="d-card p-4 lg:col-span-2">
+                <DitherShadow />
+                <div class="d-section-label">Recent Observations</div>
                 <div class="overflow-y-auto max-h-[300px]">
                     <ul v-if="recentObservationsData.length && !recentObservationsError" class="space-y-2">
                         <li v-for="observation in recentObservationsData" :key="observation.id"
-                            class="dither-border bg-[var(--color-card-alt)] flex items-center justify-between p-2 hover:bg-[var(--color-border)] rounded-md transition-colors">
+                            class="border-b border-[var(--color-border)] flex items-center justify-between p-2 transition-colors">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-[var(--color-border)] rounded-full flex items-center justify-center text-[var(--color-text-muted)] text-xs">
+                                <div class="w-10 h-10 border border-[var(--color-border)] rounded-full flex items-center justify-center text-[var(--color-text-muted)] text-xs">
                                     <font-awesome-icon :icon="['fas', 'feather']" />
                                 </div>
                                 <div>
@@ -95,13 +91,13 @@
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2">
-                                <button @click="togglePlayBirdCall(observation)" class="dither-btn text-[var(--color-success)] hover:opacity-80 p-2 rounded-full transition-colors">
+                                <button @click="togglePlayBirdCall(observation)" class="d-btn !p-2 !text-xs">
                                     <font-awesome-icon
                                         :icon="currentPlayingId === observation.id ? ['fas', 'pause'] : ['fas', 'play']"
                                         class="h-4 w-4" />
                                 </button>
                                 <button @click="showSpectrogram(observation)"
-                                    class="dither-btn text-[var(--color-info)] hover:opacity-80 p-2 rounded-full transition-colors">
+                                    class="d-btn outline !p-2 !text-xs">
                                     <font-awesome-icon :icon="['fas', 'circle-info']" class="h-4 w-4" />
                                 </button>
                             </div>
@@ -113,10 +109,9 @@
             </div>
 
             <!-- Hourly Activity Chart -->
-            <div v-show="isDesktop" class="dither-card dither-border bg-[var(--color-card)] rounded-lg shadow p-4">
-                <div class="dither-header rounded mb-2 px-1">
-                  <h2 class="text-base font-semibold text-[var(--color-text-secondary)] lg:text-lg">Hourly Activity</h2>
-                </div>
+            <div v-show="isDesktop" class="d-card p-4">
+                <DitherShadow />
+                <div class="d-section-label">Hourly Activity</div>
                 <div v-if="!hourlyBirdActivityError" class="relative h-[220px] w-full">
                     <canvas ref="hourlyActivityChart"></canvas>
                 </div>
@@ -145,6 +140,7 @@ import { useFetchBirdData } from '@/composables/useFetchBirdData';
 import { useBirdCharts } from '@/composables/useBirdCharts';
 import { useAudioPlayer } from '@/composables/useAudioPlayer';
 import SpectrogramModal from '@/components/SpectrogramModal.vue';
+import DitherShadow from '@/components/DitherShadow.vue';
 import { getAudioUrl, getSpectrogramUrl } from '@/services/media'
 
 Chart.register(MatrixController, MatrixElement)
@@ -152,7 +148,8 @@ Chart.register(MatrixController, MatrixElement)
 export default {
     name: 'dash-board',
     components: {
-        SpectrogramModal
+        SpectrogramModal,
+        DitherShadow
     },
     setup() {
         const {
@@ -267,7 +264,7 @@ export default {
         }
 
         const isDataEmpty = computed(() =>
-            !detailedBirdActivityData.value || 
+            !detailedBirdActivityData.value ||
             detailedBirdActivityData.value.length === 0 ||
             detailedBirdActivityData.value.every(bird => bird.hourlyActivity.every(count => count === 0))
         )
@@ -279,20 +276,20 @@ export default {
             recentObservationsData,
             summaryData,
             latestObservationimageUrl,
-            
+
             hourlyBirdActivityError,
             detailedBirdActivityError,
             latestObservationError,
             recentObservationsError,
             summaryError,
-            
+
             formatTimestamp,
             formatConfidence,
-            
+
             hourlyActivityChart,
             totalObservationsChart,
             hourlyActivityHeatmap,
-            
+
             isSpectrogramModalVisible,
             currentSpectrogramUrl,
             currentAudioUrl,
@@ -311,7 +308,6 @@ export default {
 </script>
 
 <style scoped>
-/* Scoped styles mainly for specific overrides if Tailwind doesn't cover everything */
 .dashboard {
     max-width: 1400px;
 }

@@ -136,7 +136,7 @@ export function useBirdCharts() {
                 datasets: [{
                     label: 'Hourly Bird Detections',
                     data: prepareDataForCategoryMatrix(data, rowStats),
-                    borderColor: 'white',
+                    borderColor: '#f0ece3',
                     borderWidth: 1,
                     width: ({ chart }) => (chart.chartArea || {}).width / 24,
                     height: ({ chart }) => (chart.chartArea || {}).height / species.length,
