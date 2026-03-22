@@ -3,9 +3,11 @@
     <DitherShadow />
     <h2 class="text-3xl font-bold text-[var(--color-text)] font-['IBM_Plex_Mono'] mb-2">BirdNet OffGrid</h2>
     <p class="text-lg text-[var(--color-text-secondary)] mb-4">Your Device is {{ socketStatus }}</p>
-    <div class="d-input text-lg font-semibold text-[var(--color-text-secondary)] mb-6">
+    <div class="d-input text-lg font-semibold text-[var(--color-text-secondary)] mb-2">
       {{ localTime }}
     </div>
+    <p v-if="timeSynced" class="text-sm text-[var(--color-text-muted)] mb-6">Clock synced</p>
+    <p v-else class="text-sm text-[var(--color-text-muted)] mb-6">Clock not synced</p>
 
     <button v-if="!setupComplete && socketStatus === 'Connected'" @click="goToScriptPage"
       class="d-btn text-xl">
@@ -48,6 +50,7 @@ export default {
   data() {
     return {
       setupComplete: false,
+      timeSynced: false,
       isResetting: false,
       resetMessage: '',
     };
@@ -55,9 +58,33 @@ export default {
 
   created() {
     this.checkSetupComplete();
+    // Sync immediately if already connected (watcher only fires on change)
+    if (this.socketStatus === 'Connected') {
+      this.syncTime();
+    }
+  },
+
+  watch: {
+    socketStatus(newVal) {
+      if (newVal === 'Connected' && !this.timeSynced) {
+        this.syncTime();
+      }
+    }
   },
 
   methods: {
+    async syncTime() {
+      try {
+        const now = new Date();
+        // Build local ISO string (not UTC) so the Pi clock matches the client's timezone
+        const isoTime = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        await api.post('/sync-time', { iso_time: isoTime });
+        this.timeSynced = true;
+        console.log('Pi clock synced to', isoTime);
+      } catch (err) {
+        console.error('Time sync failed:', err);
+      }
+    },
     async checkSetupComplete() {
       try {
         const resp = await api.get('/setup-complete');

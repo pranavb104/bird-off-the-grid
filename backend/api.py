@@ -155,6 +155,59 @@ def get_audio(date: str, species: str, filename: str):
 # WittyPi schedule endpoint
 # ---------------------------------------------------------------------------
 
+class SyncTimeRequest(BaseModel):
+    iso_time: str  # ISO-8601 datetime from client, e.g. "2026-03-22T14:30:00"
+
+
+@app.post("/api/sync-time")
+def sync_time(req: SyncTimeRequest):
+    """Set Pi system clock from the client's browser time, then write to WittyPi RTC."""
+    try:
+        client_dt = datetime.fromisoformat(req.iso_time)
+    except ValueError as exc:
+        return JSONResponse({"error": f"Invalid datetime: {exc}"}, status_code=400)
+
+    date_str = client_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    # 1. Set system clock
+    try:
+        result = subprocess.run(
+            ["sudo", "date", "-s", date_str],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode != 0:
+            logger.error("date -s failed: %s", result.stderr)
+            return JSONResponse({"error": f"Failed to set system time: {result.stderr.strip()}"}, status_code=500)
+        logger.info("System clock set to %s", date_str)
+    except FileNotFoundError:
+        logger.warning("date command not found — skipping system clock set")
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"error": "date command timed out"}, status_code=500)
+
+    # 2. Write system time to WittyPi RTC via utilities.sh
+    wittypi_dir = Path(config.get("wittypi", {}).get("schedules_dir", "/home/pi/wittypi/schedules")).parent
+    utilities_sh = wittypi_dir / "utilities.sh"
+    if utilities_sh.is_file():
+        try:
+            result = subprocess.run(
+                ["sudo", "bash", "-c", f"cd {wittypi_dir} && . ./utilities.sh && system_to_rtc"],
+                capture_output=True, text=True, timeout=15
+            )
+            if result.returncode != 0:
+                logger.error("system_to_rtc failed: %s", result.stderr)
+                return JSONResponse(
+                    {"error": f"System clock set but RTC write failed: {result.stderr.strip()}"},
+                    status_code=500
+                )
+            logger.info("WittyPi RTC synced from system clock")
+        except subprocess.TimeoutExpired:
+            return JSONResponse({"error": "RTC sync timed out"}, status_code=500)
+    else:
+        logger.warning("WittyPi utilities.sh not found at %s — RTC not synced", utilities_sh)
+
+    return {"status": "ok", "time_set": date_str}
+
+
 class ScheduleRequest(BaseModel):
     start_datetime: str   # ISO-8601 local datetime, e.g. "2024-03-01T05:00:00"
     end_datetime: str
