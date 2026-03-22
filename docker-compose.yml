@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: birdnet-backend
+    restart: unless-stopped
+    devices:
+      - /dev/snd:/dev/snd
+    group_add:
+      - "29"          # audio GID on Pi OS — verify with: getent group audio
+    volumes:
+      - /home/pi/birdnet-data:/app/data
+      - /home/pi/wittypi:/home/pi/wittypi
+    expose:
+      - "7007"
+    networks:
+      - birdnet-internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: birdnet-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - birdnet-internal
+
+networks:
+  birdnet-internal:
+    driver: bridge

@@ -25,12 +25,18 @@ python backend/recorder.py    # captures WAV files → data/StreamData/
 python backend/analyzer.py    # watches StreamData/, runs inference
 python backend/api.py         # FastAPI on port 7007
 
-# Start/stop all three services together (Pi)
-./backend/run.sh start
-./backend/run.sh stop
-./backend/run.sh restart
+# Debug mode — runs recorder, analyzer, and API directly (no Docker, no frontend)
+# Use this to debug the frontend from a separate device pointed at the Pi's API
+./backend/debug.sh start
+./backend/debug.sh stop
+./backend/debug.sh restart
+# Logs written to backend/logs/{recorder,analyzer,api}.log
 
-# Full Pi install (sets up venv, systemd services, PulseAudio)
+# Production — full stack via Docker Compose (from repo root)
+docker compose up -d
+docker compose down
+
+# Full Pi install (sets up venv and system packages)
 ./backend/install.sh
 ```
 
@@ -87,6 +93,31 @@ Vue 3 (Options API) with Vue Router. Three routes/views:
 
 `frontend/src/services/api.js` hardcodes the Pi's IP (`192.168.1.203`) and port `7100`. Update this when the Pi's address changes. The app also opens a WebSocket to `ws://192.168.1.203:7100/ws` from `App.vue`.
 
+### UI Theme
+
+Monochrome retro theme (cream/ink) with IBM Plex fonts and Bayer 4×4 canvas-based dithered shadows. Color tokens are defined in `frontend/src/tailwind.css` under `@theme` and consumed via `bg-[var(--color-*)]` / `text-[var(--color-*)]` Tailwind classes. Key tokens:
+
+- `--color-background` `#f0ece3` — paper (page background, set on `body`)
+- `--color-card` `#f0ece3` / `--color-card-alt` `#e8e4db` — card surfaces (distinguished by border)
+- `--color-primary` `#0a0a0a` — ink (buttons, accents)
+- `--color-text` `#0a0a0a` / `--color-text-secondary` `#333333` / `--color-text-muted` `#888888` — text hierarchy
+- `--color-border` `#0a0a0a` — solid black borders
+
+Utility classes in `@layer utilities` in `tailwind.css`:
+- `.d-card` — card with 1.5px ink border, 2px radius, `position: relative`
+- `.d-btn` / `.d-btn.outline` — IBM Plex Mono uppercase button with hover/active translate
+- `.d-input` — IBM Plex Mono styled input field
+- `.d-section-label` — uppercase muted section heading with bottom border
+
+Dither shadow system (canvas-based Bayer 4×4 ordered dithering):
+- `frontend/src/composables/useDither.js` — `renderDitherShadow()` and `renderDitherFill()` draw pixel-pattern shadows/fills onto `<canvas>` elements
+- `frontend/src/components/DitherShadow.vue` — drop-in component, place inside any `.d-card`; renders a canvas at `top:4px; left:2px; z-index:-1` behind the card. Uses `ResizeObserver` to auto-resize.
+- `frontend/src/components/DSelect.vue` — custom dropdown with dithered hover fills, replaces native `<select>`
+
+**Important**: The page background must be on `body` (not `#app`) so that the `z-index: -1` shadow canvases remain visible above the body background but below card content.
+
+Fonts are self-hosted as woff2 files in `frontend/public/fonts/` (IBM Plex Mono + IBM Plex Sans, weights 400/500/700), loaded via `@font-face` in `index.html`. No external CDN dependency.
+
 ### Key configuration (`backend/config.yml`)
 
 ```yaml
@@ -106,7 +137,7 @@ All model paths in `config.yml` are relative to the `backend/` directory (i.e. `
 
 ### Pi deployment
 
-`install.sh` creates three systemd services: `birdnet-recorder`, `birdnet-analyzer`, `birdnet-api`. The venv is at `~/birdnet-venv` (not inside the repo). On the Pi, `ai-edge-litert` may not be available — the interpreter import falls back to `tflite_runtime` then `tensorflow.lite`.
+`install.sh` sets up the Python venv (`~/birdnet-venv`), installs system packages, and verifies the model files. No systemd services are created. Use `debug.sh` for direct process management or Docker Compose for production. On the Pi, `ai-edge-litert` may not be available — the interpreter import falls back to `tflite_runtime` then `tensorflow.lite`.
 
 ## Important Notes
 - The first commit is to main and thereafter all commits are to master branch 

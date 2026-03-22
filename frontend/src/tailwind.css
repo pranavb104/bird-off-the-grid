@@ -1,1 +1,100 @@
 @import "tailwindcss";
+
+@theme {
+  /* Brand */
+  --color-primary:          #0a0a0a;
+  --color-primary-hover:    #333333;
+  --color-primary-disabled: #aaaaaa;
+
+  /* Layout */
+  --color-background:  #f0ece3;
+  --color-card:        #f0ece3;
+  --color-card-alt:    #e8e4db;
+
+  /* Text */
+  --color-text:           #0a0a0a;
+  --color-text-secondary: #333333;
+  --color-text-muted:     #888888;
+
+  /* Borders & inputs */
+  --color-border:        #0a0a0a;
+  --color-border-accent: #0a0a0a;
+  --color-input-bg:      #f0ece3;
+
+  /* Semantic states */
+  --color-success: #0a0a0a;
+  --color-error:   #c0392b;
+  --color-info:    #555555;
+}
+
+@layer utilities {
+  /* Card base */
+  .d-card {
+    background: var(--color-card);
+    border: 1.5px solid var(--color-border);
+    border-radius: 2px;
+    position: relative;
+  }
+
+  /* Button base */
+  .d-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-primary);
+    color: var(--color-card);
+    border: 1.5px solid var(--color-border);
+    border-radius: 2px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 10px 22px;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.08s ease;
+    user-select: none;
+    outline: none;
+  }
+
+  .d-btn:hover {
+    transform: translate(-1px, -1px);
+  }
+
+  .d-btn:active {
+    transform: translate(2px, 2px);
+  }
+
+  .d-btn.outline {
+    background: var(--color-card);
+    color: var(--color-primary);
+  }
+
+  /* Input base */
+  .d-input {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    background: var(--color-card);
+    color: var(--color-text);
+    border: 1.5px solid var(--color-border);
+    border-radius: 2px;
+    padding: 10px 14px;
+    outline: none;
+    width: 100%;
+  }
+
+  /* Section label */
+  .d-section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 6px;
+    margin-bottom: 16px;
+  }
+}

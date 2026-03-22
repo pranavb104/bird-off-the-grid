@@ -1,60 +1,57 @@
 <template>
-  <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+  <div class="d-card p-6 max-w-md w-full">
+    <DitherShadow />
     <!-- Header -->
-    <h2 class="text-3xl font-bold text-[#d63384] mb-2">Schedule Your Script</h2>
+    <h2 class="text-3xl font-bold text-[var(--color-text)] font-['IBM_Plex_Mono'] mb-2">Schedule Your Script</h2>
     <!-- Form Body -->
     <main class="p-4">
         <div v-if="state === 0" class="flex flex-col gap-6">
             <!-- First Startup Section -->
             <div class="flex flex-col">
-                <label class="text-lg text-gray-700">The first startup occurs at:</label>
+                <label class="text-lg text-[var(--color-text-secondary)]">The first startup occurs at:</label>
                 <div class="flex flex-col gap-2 mt-2">
-                    <input type="datetime-local" v-model="startDate" class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300">
+                    <input type="datetime-local" v-model="startDate" class="d-input text-lg">
                 </div>
             </div>
             <!-- Continue Running Until Section -->
             <div class="flex flex-col">
-                <label class="text-lg text-gray-700">The script will run until:</label>
+                <label class="text-lg text-[var(--color-text-secondary)]">The script will run until:</label>
                 <div class="flex flex-col gap-2 mt-2">
-                    <input type="datetime-local" v-model="endDate" class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300">
+                    <input type="datetime-local" v-model="endDate" class="d-input text-lg">
                 </div>
             </div>
         </div>
         <div v-if="state === 1" class="flex flex-col gap-6">
             <!-- Set on/off times -->
             <div class="flex flex-col">
-                <label class="text-lg text-gray-700">Select on/off time:</label>
+                <label class="text-lg text-[var(--color-text-secondary)]">Select on/off time:</label>
                 <div class="flex flex-col gap-2 mt-2">
-                    <select class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300" v-model="selected">
-                        <option v-for="option in options" :key="option.value" :value="option.value">
-                            {{ option.text }}
-                        </option>
-                    </select>
+                    <DSelect :options="options" :model-value="selected" @update:model-value="selected = $event" />
                 </div>
-                <div class="mt-3 text-base italic text-[#c61f6e]"> {{ options.find(option => option.value === selected)?.info }}</div>
+                <div class="mt-3 text-base italic text-[var(--color-text-muted)]"> {{ options.find(option => option.value === selected)?.info }}</div>
             </div>
             <!-- Custom time inputs shown only for option3 -->
             <div v-if="selected === 'option3'" class="flex flex-col">
-                <label class="text-lg text-gray-700">On time:</label>
+                <label class="text-lg text-[var(--color-text-secondary)]">On time:</label>
                 <div class="flex flex-col gap-2 mt-2">
-                    <input type="time" v-model="onTime" class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300">
+                    <input type="time" v-model="onTime" class="d-input text-lg">
                 </div>
-                <label class="text-lg text-gray-700" style="margin-top: 0.75rem;">Off time:</label>
+                <label class="text-lg text-[var(--color-text-secondary)]" style="margin-top: 0.75rem;">Off time:</label>
                 <div class="flex flex-col gap-2 mt-2">
-                    <input type="time" v-model="offTime" class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300">
+                    <input type="time" v-model="offTime" class="d-input text-lg">
                 </div>
             </div>
-            <div v-if="submitError" class="text-red-500 text-sm mt-2">{{ submitError }}</div>
+            <div v-if="submitError" class="text-[var(--color-error)] text-sm mt-2">{{ submitError }}</div>
         </div>
             <br/>
             <br/>
         <!-- Navigation Buttons -->
          <div v-if="state === 0">
-            <button class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors disabled:bg-[#e8a0c0] disabled:cursor-not-allowed" @click="state = 1">Next</button>
+            <button class="d-btn text-xl" @click="state = 1">Next</button>
          </div>
          <div v-if="state === 1" class="flex items-center justify-between gap-6">
-            <button class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors disabled:bg-[#e8a0c0] disabled:cursor-not-allowed" @click="state = 0">Back</button>
-            <button class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors disabled:bg-[#e8a0c0] disabled:cursor-not-allowed" :disabled="isSubmitting" @click="submitSchedule">
+            <button class="d-btn outline text-xl" @click="state = 0">Back</button>
+            <button class="d-btn text-xl disabled:opacity-50 disabled:cursor-not-allowed" :disabled="isSubmitting" @click="submitSchedule">
                 {{ isSubmitting ? 'Submitting...' : 'Next' }}
             </button>
          </div>
@@ -66,9 +63,12 @@
 
 <script>
 import api from '@/services/api';
+import DitherShadow from '@/components/DitherShadow.vue';
+import DSelect from '@/components/DSelect.vue';
 
 export default {
   name: 'scriptPage',
+  components: { DitherShadow, DSelect },
   props: {
     localTime: String,
     socketStatus: String

@@ -1,36 +1,41 @@
 <template>
-  <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-    <h2 class="text-3xl font-bold text-[#d63384] mb-2">BirdNet OffGrid</h2>
-    <p class="text-lg text-gray-500 mb-4">Your Device is {{ socketStatus }}</p>
-    <div class="text-lg font-semibold text-gray-600 bg-gray-100 px-5 py-2.5 rounded-lg border border-gray-300 mb-6">
+  <div class="d-card p-6 max-w-md w-full">
+    <DitherShadow />
+    <h2 class="text-3xl font-bold text-[var(--color-text)] font-['IBM_Plex_Mono'] mb-2">BirdNet OffGrid</h2>
+    <p class="text-lg text-[var(--color-text-secondary)] mb-4">Your Device is {{ socketStatus }}</p>
+    <div class="d-input text-lg font-semibold text-[var(--color-text-secondary)] mb-2">
       {{ localTime }}
     </div>
+    <p v-if="timeSynced" class="text-sm text-[var(--color-text-muted)] mb-6">Clock synced</p>
+    <p v-else class="text-sm text-[var(--color-text-muted)] mb-6">Clock not synced</p>
 
     <button v-if="!setupComplete && socketStatus === 'Connected'" @click="goToScriptPage"
-      class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors">
-      Setup ->
+      class="d-btn text-xl">
+      Setup →
     </button>
 
     <div v-if="setupComplete && socketStatus === 'Connected'" class="flex items-center justify-between gap-3">
       <button @click="$router.push('/dashboard')"
-        class="bg-[#d63384] hover:bg-[#c61f6e] text-white text-xl py-3 px-6 rounded-lg transition-colors cursor-pointer">
-        Start ->
+        class="d-btn text-xl cursor-pointer">
+        Start →
       </button>
       <button @click="resetData" :disabled="isResetting"
-        class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xl py-3 px-6 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+        class="d-btn outline text-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
         Reset
       </button>
     </div>
 
-    <p v-if="resetMessage" class="text-green-600 text-sm mt-3">{{ resetMessage }}</p>
+    <p v-if="resetMessage" class="text-[var(--color-text)] text-sm mt-3">{{ resetMessage }}</p>
   </div>
 </template>
 
 <script>
 import api from '@/services/api';
+import DitherShadow from '@/components/DitherShadow.vue';
 
 export default {
   name: "setupView",
+  components: { DitherShadow },
   props: {
     localTime: {
       type: String,
@@ -45,6 +50,7 @@ export default {
   data() {
     return {
       setupComplete: false,
+      timeSynced: false,
       isResetting: false,
       resetMessage: '',
     };
@@ -52,9 +58,33 @@ export default {
 
   created() {
     this.checkSetupComplete();
+    // Sync immediately if already connected (watcher only fires on change)
+    if (this.socketStatus === 'Connected') {
+      this.syncTime();
+    }
+  },
+
+  watch: {
+    socketStatus(newVal) {
+      if (newVal === 'Connected' && !this.timeSynced) {
+        this.syncTime();
+      }
+    }
   },
 
   methods: {
+    async syncTime() {
+      try {
+        const now = new Date();
+        // Build local ISO string (not UTC) so the Pi clock matches the client's timezone
+        const isoTime = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        await api.post('/sync-time', { iso_time: isoTime });
+        this.timeSynced = true;
+        console.log('Pi clock synced to', isoTime);
+      } catch (err) {
+        console.error('Time sync failed:', err);
+      }
+    },
     async checkSetupComplete() {
       try {
         const resp = await api.get('/setup-complete');
