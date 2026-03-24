@@ -131,9 +131,17 @@ model:
   labels: "model/BirdNET_GLOBAL_6K_V2.4_Model_FP16_Labels.txt"
 
 confidence_threshold: 0.7   # sigmoid probability (0–1)
+
+# False-positive filter: species must be detected N times within window to be saved
+min_detection_count: 2        # set to 1 to disable filtering
+detection_window_seconds: 300  # rolling window in seconds
 ```
 
 All model paths in `config.yml` are relative to the `backend/` directory (i.e. `Path(__file__).parent`).
+
+### False-positive filter
+
+`analyzer.py` includes a `DetectionTracker` that buffers detections per species. A species must be detected `min_detection_count` times within `detection_window_seconds` before any detections are saved to disk/DB. Once confirmed, subsequent detections for that species are saved immediately until the window expires. Set `min_detection_count: 1` to disable filtering entirely.
 
 ### Pi deployment
 

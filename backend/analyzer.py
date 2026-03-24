@@ -5,6 +5,8 @@ import subprocess
 import sys
 import time
 import logging
+from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -95,6 +97,97 @@ def load_labels():
 def _sigmoid(x: np.ndarray) -> np.ndarray:
     """Apply sigmoid to convert raw logits to probabilities (0–1)."""
     return 1.0 / (1.0 + np.exp(-np.clip(x, -15.0, 15.0)))
+
+
+@dataclass
+class PendingDetection:
+    """A detection buffered until the species reaches the confirmation threshold."""
+    audio_chunk: np.ndarray
+    sr: int
+    detection_time: datetime
+    common_name: str
+    scientific_name: str
+    confidence: float
+    mono_ts: float  # time.monotonic() when recorded
+
+
+class DetectionTracker:
+    """Rolling time-window species counter to filter false positives.
+
+    A species must be detected min_count times within window_seconds before
+    any of its detections are saved. Once confirmed, subsequent detections
+    for that species are saved immediately until the window expires.
+    """
+
+    def __init__(self, min_count: int, window_seconds: float):
+        self.min_count = min_count
+        self.window_seconds = window_seconds
+        self._pending: dict[str, list[PendingDetection]] = defaultdict(list)
+        self._confirmed: dict[str, float] = {}  # species -> mono_ts of confirmation
+
+    def track(self, audio_chunk: np.ndarray, sr: int, detection_time: datetime,
+              common_name: str, scientific_name: str,
+              confidence: float) -> list[PendingDetection]:
+        """Buffer a detection and return any that should be saved now."""
+        det = PendingDetection(
+            audio_chunk=audio_chunk, sr=sr, detection_time=detection_time,
+            common_name=common_name, scientific_name=scientific_name,
+            confidence=confidence, mono_ts=time.monotonic(),
+        )
+
+        # Pass-through when filtering is disabled
+        if self.min_count <= 1:
+            return [det]
+
+        self._prune()
+
+        # Already confirmed — save immediately
+        if scientific_name in self._confirmed:
+            logger.debug("  Species %s already confirmed — saving immediately", scientific_name)
+            return [det]
+
+        # Buffer and check threshold
+        self._pending[scientific_name].append(det)
+        count = len(self._pending[scientific_name])
+        logger.debug("  Buffered detection #%d for %s (need %d)",
+                     count, scientific_name, self.min_count)
+
+        if count >= self.min_count:
+            # Confirm species and flush all pending detections
+            self._confirmed[scientific_name] = time.monotonic()
+            flushed = self._pending.pop(scientific_name)
+            logger.info("  Species %s confirmed (%d detections in window) — "
+                        "flushing %d pending", scientific_name, count, len(flushed))
+            return flushed
+
+        return []
+
+    def _prune(self):
+        """Remove stale pending detections and expired confirmations."""
+        now = time.monotonic()
+        cutoff = now - self.window_seconds
+
+        # Prune pending
+        stale_keys = []
+        for species, dets in self._pending.items():
+            before = len(dets)
+            self._pending[species] = [d for d in dets if d.mono_ts > cutoff]
+            pruned = before - len(self._pending[species])
+            if pruned:
+                logger.debug("  Pruned %d stale pending detection(s) for %s", pruned, species)
+            if not self._pending[species]:
+                stale_keys.append(species)
+        for key in stale_keys:
+            del self._pending[key]
+
+        # Expire confirmations
+        expired = [sp for sp, ts in self._confirmed.items() if ts <= cutoff]
+        for sp in expired:
+            logger.debug("  Confirmation expired for %s", sp)
+            del self._confirmed[sp]
+
+
+detection_tracker: DetectionTracker | None = None
 
 
 def analyze_chunk(audio_chunk: np.ndarray, chunk_idx: int) -> list[tuple[str, str, float]]:
@@ -261,10 +354,15 @@ def process_wav(wav_path: Path):
         total_detections += len(results)
 
         for common_name, scientific_name, confidence in results:
-            save_detection(
+            to_save = detection_tracker.track(
                 chunk_audio, sr, chunk_time,
-                common_name, scientific_name, confidence
+                common_name, scientific_name, confidence,
             )
+            for det in to_save:
+                save_detection(
+                    det.audio_chunk, det.sr, det.detection_time,
+                    det.common_name, det.scientific_name, det.confidence,
+                )
 
     logger.info("  Total detections in %s: %d", wav_path.name, total_detections)
 
@@ -358,9 +456,17 @@ class WavHandler(FileSystemEventHandler):
 
 
 def main():
+    global detection_tracker
     load_config()
     load_model()
     load_labels()
+
+    detection_tracker = DetectionTracker(
+        min_count=config.get("min_detection_count", 2),
+        window_seconds=config.get("detection_window_seconds", 300),
+    )
+    logger.info("Detection tracker: min_count=%d, window=%ds",
+                detection_tracker.min_count, detection_tracker.window_seconds)
 
     logger.info("Initialising database at %s", data_dir)
     database.init_db(str(data_dir))
