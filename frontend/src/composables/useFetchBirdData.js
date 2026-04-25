@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import api from "@/services/api";
+import birdImages from "@/services/birdImages";
 import { useLogger } from "./useLogger";
 
 export function useFetchBirdData() {
@@ -105,9 +106,16 @@ export function useFetchBirdData() {
             }
 
             if (latestObservationData.value) {
-                const species = latestObservationData.value.common_name || latestObservationData.value.scientific_name;
-                const base = api.defaults.baseURL;
-                latestObservationimageUrl.value = `${base}/bird-image?species=${encodeURIComponent(species)}`;
+                const common = latestObservationData.value.common_name;
+                const sci = latestObservationData.value.scientific_name;
+                const pixel = common ? birdImages[common] : null;
+                if (pixel) {
+                    latestObservationimageUrl.value = pixel;
+                } else {
+                    const speciesParam = common || sci;
+                    const base = api.defaults.baseURL;
+                    latestObservationimageUrl.value = `${base}/bird-image?species=${encodeURIComponent(speciesParam)}`;
+                }
             }
 
         } catch (error) {

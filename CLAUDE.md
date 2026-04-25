@@ -79,10 +79,10 @@ USB mic → recorder.py (arecord)
 ### Model
 
 - **Model file**: `model/BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite`
-- **Labels file**: `model/BirdNET_GLOBAL_6K_V2.4_Model_FP16_Labels.txt` (6522 scientific names, one per line, no common names)
+- **Labels file**: `model/BirdNET_GLOBAL_6K_V2.4_Labels_en.txt` (6522 lines, format `Scientific name_Common Name` per line)
 - **Input**: `[1, 144000]` float32 — raw audio at 48 kHz for 3 s
 - **Output**: `[1, 6522]` raw logits — **sigmoid must be applied** before comparing to `confidence_threshold` (done in `analyzer._sigmoid`)
-- The label format is scientific name only (e.g. `Parus major`). The `common_name` DB column will mirror the scientific name until a lookup table is added.
+- `analyzer.py` splits each label on `_` and stores both halves in the DB's `scientific_name` and `common_name` columns.
 
 ### Frontend
 
@@ -94,6 +94,8 @@ Vue 3 (Options API) with Vue Router. Three routes/views:
 `frontend/src/services/api.js` uses an origin-relative `/api` base URL (overridable via `VUE_APP_API_URL`). `App.vue` opens its WebSocket at `ws://${window.location.host}/ws`. Both rely on the frontend container's nginx (`frontend/nginx.conf`) to proxy `/api/` and `/ws` to `backend:7007` over the internal Docker network — the backend port is not published to the host. For local dev outside Docker (e.g. `npm run serve` against a remote Pi), set `VUE_APP_API_URL` to the backend URL.
 
 `HealthIndicator.vue` is mounted in `App.vue` and renders on all routes as a fixed top-right element (z-index 40). It polls `GET /api/health` every 10s, showing a green/red dot with Online/Offline text. Clicking toggles an expanded panel with WittyPi power metrics (Vin, Vout, Iout). The `/api/health` endpoint reads WittyPi I2C registers via `smbus2`; when unavailable (local dev) it returns `"power": null`.
+
+The dashboard's "latest observation" card resolves its bird image in this order: pixel-art lookup in `frontend/src/services/birdImages.js` (a generated common-name → `/birds/<slug>.<ext>` map) → Wikipedia thumbnail via `GET /api/bird-image` → `/default_bird.svg` on `<img>` error. Pixel-art assets live in `frontend/public/birds/` and are served as plain static files. Regenerate both the assets and the map with `python3 scripts/build_bird_images.py`; the script slugifies filenames, validates each common name against `BirdNET_GLOBAL_6K_V2.4_Labels_en.txt`, and wipes any stale slugs from previous runs. The `<img>` toggles `image-rendering: pixelated` when the URL starts with `/birds/` so pixel art stays crisp while Wikipedia photos render smooth.
 
 ### UI Theme
 
