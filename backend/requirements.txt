@@ -7,3 +7,4 @@ uvicorn[standard]
 pyyaml
 watchdog
 soundfile
+smbus2

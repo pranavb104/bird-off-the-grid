@@ -71,7 +71,7 @@ USB mic → recorder.py (arecord)
 |---|---|
 | `recorder.py` | Shells out to `arecord` in a loop; writes timestamped WAVs to `data/StreamData/` |
 | `analyzer.py` | `watchdog` observer on `StreamData/`; splits each WAV into 3s chunks, runs TFLite inference, applies sigmoid to logits, saves detections above threshold via `database.py` and `spectrogram.py`; deletes processed WAVs |
-| `api.py` | FastAPI; serves detections, species lists, spectrogram PNGs, and audio clips from `data/` |
+| `api.py` | FastAPI; serves detections, species lists, spectrogram PNGs, audio clips, and system health (including WittyPi power via I2C) from `data/` |
 | `database.py` | SQLite wrapper (`data/birds.db`); all writes go through `_execute_with_retry` for busy-lock resilience |
 | `spectrogram.py` | Matplotlib spectrogram PNG generator (dark theme, used at save time) |
 | `config.yml` | Single source of truth for all paths, thresholds, audio device, and port |
@@ -91,7 +91,9 @@ Vue 3 (Options API) with Vue Router. Three routes/views:
 - `/scriptView` → `scriptView.vue`
 - `/dashboard` → `Dashboard.vue` — main detections dashboard using Chart.js
 
-`frontend/src/services/api.js` hardcodes the Pi's IP (`192.168.1.203`) and port `7100`. Update this when the Pi's address changes. The app also opens a WebSocket to `ws://192.168.1.203:7100/ws` from `App.vue`.
+`frontend/src/services/api.js` uses an origin-relative `/api` base URL (overridable via `VUE_APP_API_URL`). `App.vue` opens its WebSocket at `ws://${window.location.host}/ws`. Both rely on the frontend container's nginx (`frontend/nginx.conf`) to proxy `/api/` and `/ws` to `backend:7007` over the internal Docker network — the backend port is not published to the host. For local dev outside Docker (e.g. `npm run serve` against a remote Pi), set `VUE_APP_API_URL` to the backend URL.
+
+`HealthIndicator.vue` is mounted in `App.vue` and renders on all routes as a fixed top-right element (z-index 40). It polls `GET /api/health` every 10s, showing a green/red dot with Online/Offline text. Clicking toggles an expanded panel with WittyPi power metrics (Vin, Vout, Iout). The `/api/health` endpoint reads WittyPi I2C registers via `smbus2`; when unavailable (local dev) it returns `"power": null`.
 
 ### UI Theme
 
