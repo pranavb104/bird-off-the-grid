@@ -2,7 +2,7 @@ FROM python:3.11-slim-bookworm
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ffmpeg alsa-utils libsndfile1 libasound2 supervisor \
+        ffmpeg alsa-utils libsndfile1 libasound2 supervisor sudo i2c-tools bc \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
