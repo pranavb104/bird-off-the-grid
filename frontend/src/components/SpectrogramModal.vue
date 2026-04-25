@@ -9,51 +9,68 @@
   >
     <div
       v-if="isVisible"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--color-text)]/80"
       @click.self="close"
     >
-      <div class="relative max-w-full max-w-[95vw]">
-        <!-- Image + overlay container -->
-        <div class="d-card relative overflow-hidden">
-          <img
-            :src="imageUrl"
-            :alt="alt"
-            class="block w-full max-h-[80vh] object-contain"
-          >
+      <div class="relative max-w-[95vw]">
+        <div class="d-card relative flex flex-col">
+          <DitherShadow :intensity="0.55" />
 
-          <!-- Progress line — only when audio is present and playing/loaded -->
+          <!-- Image region -->
+          <div class="relative">
+            <img
+              :src="imageUrl"
+              :alt="alt"
+              class="spectrogram-img block w-full max-h-[80vh] object-contain"
+            >
+            <div
+              v-if="audioUrl"
+              class="absolute top-0 bottom-0 w-0.5 bg-[var(--color-text)] opacity-90 pointer-events-none transition-none"
+              :style="{ left: (progress * 100) + '%' }"
+            />
+          </div>
+
+          <!-- Control bar — cream, on-theme -->
           <div
             v-if="audioUrl"
-            class="absolute top-0 bottom-0 w-0.5 bg-[var(--color-text)] opacity-90 pointer-events-none transition-none"
-            :style="{ left: (progress * 100) + '%' }"
-          />
-
-          <!-- Audio control bar -->
-          <div
-            v-if="audioUrl"
-            class="absolute bottom-0 left-0 right-0 flex items-center gap-2 px-3 py-2 bg-black/60"
+            class="flex items-center gap-3 px-3 py-2 border-t-[1.5px] border-[var(--color-border)] bg-[var(--color-card)]"
           >
             <button
               @click="toggleAudio"
-              class="text-[var(--color-background)] hover:text-[var(--color-text-muted)] transition-colors focus:outline-none w-5 flex items-center justify-center"
+              class="d-btn !p-1.5 flex items-center justify-center"
+              :title="isPlaying ? 'Pause' : 'Play'"
             >
-              <font-awesome-icon :icon="isPlaying ? ['fas', 'pause'] : ['fas', 'play']" />
+              <svg v-if="isPlaying" class="w-3 h-3" viewBox="0 0 14 14" fill="currentColor">
+                <rect x="2" y="1" width="3.5" height="12" />
+                <rect x="8.5" y="1" width="3.5" height="12" />
+              </svg>
+              <svg v-else class="w-3 h-3" viewBox="0 0 14 14" fill="currentColor">
+                <polygon points="3,1 12,7 3,13" />
+              </svg>
             </button>
-            <div class="flex-1 h-1 bg-[var(--color-text-muted)] rounded-full overflow-hidden cursor-pointer" @click="seekTo">
-              <div class="h-full bg-[var(--color-background)] rounded-full" :style="{ width: (progress * 100) + '%' }"></div>
+
+            <div class="relative flex-1 h-[18px] cursor-pointer" @click="seekTo">
+              <div class="absolute inset-0 border-[1.5px] border-[var(--color-border)] rounded-[2px] bg-[var(--color-card)] overflow-hidden">
+                <div
+                  class="h-full bg-[var(--color-text)]"
+                  :style="{ width: (progress * 100) + '%' }"
+                ></div>
+              </div>
             </div>
-            <span class="text-[var(--color-background)] text-xs whitespace-nowrap">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
+
+            <span class="time-label">
+              {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
+            </span>
           </div>
 
-          <!-- No-audio indicator when modal opened without audio -->
+          <!-- No-audio state -->
           <div
             v-else
-            class="absolute bottom-0 left-0 right-0 flex items-center justify-center px-3 py-1.5 bg-black/40"
+            class="px-3 py-2 border-t-[1.5px] border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-center"
           >
-            <span class="text-[var(--color-background)] text-xs">No audio available</span>
+            <span class="no-audio-label">No audio available</span>
           </div>
 
-          <!-- Hidden audio element -->
           <audio
             v-if="audioUrl"
             ref="audioEl"
@@ -63,17 +80,6 @@
             @ended="onEnded"
           />
         </div>
-
-        <!-- Close button (outside top-right corner) -->
-        <button
-          @click="close"
-          class="d-btn absolute -top-2 -right-2 sm:-top-3 sm:-right-3 !p-1 sm:!p-1.5"
-          title="Close"
-        >
-          <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
       </div>
     </div>
   </Transition>
@@ -81,9 +87,11 @@
 
 <script>
 import { ref, watch, nextTick } from 'vue'
+import DitherShadow from './DitherShadow.vue'
 
 export default {
   name: 'SpectrogramModal',
+  components: { DitherShadow },
   props: {
     isVisible: {
       type: Boolean,
@@ -199,3 +207,27 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.spectrogram-img {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.time-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.no-audio-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+</style>
