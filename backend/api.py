@@ -17,6 +17,16 @@ from pydantic import BaseModel
 
 import database
 
+# WittyPi I2C power monitoring (graceful fallback when unavailable)
+try:
+    from smbus2 import SMBus
+    _WITTYPI_AVAILABLE = True
+except ImportError:
+    _WITTYPI_AVAILABLE = False
+
+_WITTYPI_ADDR = 0x08
+_WITTYPI_BUS = 1
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [api] %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -99,9 +109,31 @@ async def startup_event():
 # Existing endpoints
 # ---------------------------------------------------------------------------
 
+def _read_wittypi_power() -> dict | None:
+    """Read input voltage, output voltage, and output current from WittyPi 4 Mini via I2C."""
+    if not _WITTYPI_AVAILABLE:
+        return None
+    try:
+        with SMBus(_WITTYPI_BUS) as bus:
+            vin_int = bus.read_byte_data(_WITTYPI_ADDR, 0x01)
+            vin_dec = bus.read_byte_data(_WITTYPI_ADDR, 0x02)
+            vout_int = bus.read_byte_data(_WITTYPI_ADDR, 0x03)
+            vout_dec = bus.read_byte_data(_WITTYPI_ADDR, 0x04)
+            iout_int = bus.read_byte_data(_WITTYPI_ADDR, 0x05)
+            iout_dec = bus.read_byte_data(_WITTYPI_ADDR, 0x06)
+        return {
+            "input_voltage": round(vin_int + vin_dec / 100, 2),
+            "output_voltage": round(vout_int + vout_dec / 100, 2),
+            "output_current": round(iout_int + iout_dec / 100, 2),
+        }
+    except Exception as e:
+        logger.debug("WittyPi I2C read failed: %s", e)
+        return None
+
+
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "power": _read_wittypi_power()}
 
 
 @app.get("/api/recent")

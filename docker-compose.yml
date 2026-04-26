@@ -9,11 +9,17 @@ services:
     restart: unless-stopped
     devices:
       - /dev/snd:/dev/snd
+      - /dev/i2c-1:/dev/i2c-1
     group_add:
       - "29"          # audio GID on Pi OS — verify with: getent group audio
+      - "988"         # i2c GID on Pi OS — verify with: getent group i2c
+    cap_add:
+      - SYS_TIME      # required for `date -s` in /api/sync-time
     volumes:
       - /home/pi/birdnet-data:/app/data
       - /home/pi/wittypi:/home/pi/wittypi
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     expose:
       - "7007"
     networks:

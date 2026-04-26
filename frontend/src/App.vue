@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <HealthIndicator />
     <div v-if="$route.path === '/'" class="setupView">
       <setupView  :localTime="localTime" :socketStatus="socketStatus"/>
     </div>
@@ -16,13 +17,15 @@
 import setupView from './components/setupView.vue';
 import scriptView from './components/scriptView.vue';
 import Dashboard from './components/Dashboard.vue';
+import HealthIndicator from './components/HealthIndicator.vue';
 
 export default {
   name: 'bird-off-the-grid',
   components: {
     setupView,
     scriptView,
-    Dashboard
+    Dashboard,
+    HealthIndicator
   },
 
   data() {

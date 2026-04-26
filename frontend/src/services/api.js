@@ -7,9 +7,7 @@ const DEFAULT_TIMEOUT = 15000;
  * Pre-configured axios instance for internal API calls.
  * Points to the BirdNET-Pi backend.
  */
-const baseURL =
-    process.env.VUE_APP_API_URL ||
-    `http://${window.location.hostname}:7007/api`;
+const baseURL = process.env.VUE_APP_API_URL || '/api';
 
 const api = axios.create({
     baseURL,

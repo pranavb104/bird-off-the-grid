@@ -32,6 +32,7 @@
                     <!-- Bird avatar -->
                     <img :src="latestObservationimageUrl" :alt="latestObservationData.common_name"
                         @error="latestObservationimageUrl = '/default_bird.svg'"
+                        :style="{ imageRendering: latestObservationimageUrl.startsWith('/birds/') ? 'pixelated' : 'auto' }"
                         class="w-14 h-14 object-cover rounded-full border-2 border-[var(--color-border)] shrink-0">
                     <!-- Bird info -->
                     <div class="flex-1 min-w-0">

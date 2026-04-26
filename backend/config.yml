@@ -5,7 +5,11 @@ latitude: 0.0
 longitude: 0.0
 
 # Minimum confidence to save a detection (0.0 - 1.0)
-confidence_threshold: 0.7
+confidence_threshold: 0.8
+
+# False-positive filter: require N detections within window before saving
+min_detection_count: 2
+detection_window_seconds: 300
 
 # Audio capture settings
 audio:
