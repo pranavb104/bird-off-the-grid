@@ -1,7 +1,6 @@
 """TF-Lite bird analysis: watches StreamData/ and runs inference on new WAV files."""
 
 import signal
-import subprocess
 import sys
 import time
 import logging
@@ -376,7 +375,7 @@ def process_wav(wav_path: Path):
 
 def save_detection(audio_chunk: np.ndarray, sr: int, detection_time: datetime,
                    common_name: str, scientific_name: str, confidence: float):
-    """Save a detection: spectrogram PNG, MP3 clip, and database record."""
+    """Save a detection: spectrogram PNG, WAV clip, and database record."""
     date_str = detection_time.strftime("%Y-%m-%d")
     time_str = detection_time.strftime("%H-%M-%S")
     safe_species = common_name.replace(" ", "_")
@@ -386,7 +385,7 @@ def save_detection(audio_chunk: np.ndarray, sr: int, detection_time: datetime,
 
     base_name = f"{time_str}_{confidence:.2f}"
     png_path = det_dir / f"{base_name}.png"
-    mp3_path = det_dir / f"{base_name}.mp3"
+    wav_path = det_dir / f"{base_name}.wav"
 
     logger.debug("  Saving detection to %s", det_dir)
 
@@ -398,33 +397,22 @@ def save_detection(audio_chunk: np.ndarray, sr: int, detection_time: datetime,
     except Exception as e:
         logger.error("  Spectrogram generation failed: %s", e)
 
-    # Convert audio chunk to MP3 via ffmpeg (write temp WAV first)
-    tmp_wav = det_dir / f"{base_name}_tmp.wav"
+    # Write audio chunk as WAV (no lossy re-encoding)
     try:
         import soundfile as sf
-        sf.write(str(tmp_wav), audio_chunk, sr)
-        result = subprocess.run(
-            ["ffmpeg", "-y", "-i", str(tmp_wav), "-q:a", "6", str(mp3_path)],
-            capture_output=True, timeout=30
-        )
-        tmp_wav.unlink(missing_ok=True)
-        if result.returncode != 0:
-            logger.error("  ffmpeg failed (rc=%d): %s",
-                         result.returncode, result.stderr.decode(errors="replace").strip())
-        else:
-            logger.debug("  MP3 saved: %s", mp3_path.name)
+        sf.write(str(wav_path), audio_chunk, sr)
+        logger.debug("  WAV saved: %s", wav_path.name)
     except Exception as e:
-        logger.error("  MP3 conversion failed: %s", e)
-        tmp_wav.unlink(missing_ok=True)
+        logger.error("  WAV write failed: %s", e)
 
     # Relative paths for database storage
     rel_png = str(png_path.relative_to(data_dir))
-    rel_mp3 = str(mp3_path.relative_to(data_dir))
+    rel_wav = str(wav_path.relative_to(data_dir))
 
     try:
         database.insert_detection(
             str(data_dir), date_str, detection_time.strftime("%H:%M:%S"),
-            common_name, scientific_name, confidence, rel_png, rel_mp3
+            common_name, scientific_name, confidence, rel_png, rel_wav
         )
         logger.debug("  Detection written to DB")
     except Exception as e:

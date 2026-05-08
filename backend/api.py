@@ -180,7 +180,7 @@ def get_audio(date: str, species: str, filename: str):
         return JSONResponse({"error": "not found"}, status_code=404)
     if not file_path.resolve().is_relative_to(data_dir.resolve()):
         return JSONResponse({"error": "forbidden"}, status_code=403)
-    return FileResponse(str(file_path), media_type="audio/mpeg")
+    return FileResponse(str(file_path), media_type="audio/wav")
 
 
 # ---------------------------------------------------------------------------
