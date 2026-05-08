@@ -9,9 +9,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-import librosa
 import numpy as np
 import yaml
+from scipy.io import wavfile
 
 try:
     from ai_edge_litert.interpreter import Interpreter
@@ -293,11 +293,21 @@ def process_wav(wav_path: Path):
         return
 
     try:
-        audio, sr = librosa.load(str(wav_path), sr=config["audio"]["sample_rate"],
-                                 mono=True, res_type="kaiser_fast")
+        sr, audio = wavfile.read(str(wav_path))
     except Exception as e:
         logger.error("Failed to load %s: %s", wav_path.name, e)
         return
+
+    expected_sr = config["audio"]["sample_rate"]
+    if sr != expected_sr:
+        logger.error("Sample rate mismatch in %s: got %d Hz, expected %d Hz — skipping",
+                     wav_path.name, sr, expected_sr)
+        return
+
+    if audio.ndim == 2:
+        audio = audio.mean(axis=1)
+
+    audio = audio.astype(np.float32) / 32768.0
 
     duration_s = len(audio) / sr
     logger.info("  Audio loaded: duration=%.2fs, sr=%dHz, samples=%d, min=%.4f, max=%.4f, rms=%.4f",

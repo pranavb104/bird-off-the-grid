@@ -7,4 +7,5 @@ uvicorn[standard]
 pyyaml
 watchdog
 soundfile
+scipy
 smbus2
