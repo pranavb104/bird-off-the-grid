@@ -20,22 +20,6 @@ export function useFetchBirdData() {
     const summaryError = ref(null);
 
 
-    // Transform raw detection rows → [{ species, hourlyActivity: [24 counts] }]
-    const transformToHourlyActivity = (detections) => {
-        const map = {};
-        for (const det of detections) {
-            const species = det.common_name || det.scientific_name;
-            if (!map[species]) {
-                map[species] = { species, hourlyActivity: new Array(24).fill(0) };
-            }
-            const hour = parseInt((det.time || '').split(':')[0], 10);
-            if (hour >= 0 && hour < 24) {
-                map[species].hourlyActivity[hour]++;
-            }
-        }
-        return Object.values(map);
-    };
-
     const fetchChartsData = async (date) => {
         logger.info('Fetching charts data', { date });
         try {
@@ -43,7 +27,7 @@ export function useFetchBirdData() {
                 await Promise.all([
                     api.get('/hourly', { params: { date } })
                         .catch(error => ({ error })),
-                    api.get('/detections', { params: { date, limit: 1000 } })
+                    api.get('/activity')
                         .catch(error => ({ error }))
                 ]);
 
@@ -59,7 +43,10 @@ export function useFetchBirdData() {
                 detailedBirdActivityError.value = "Failed to fetch detailed activity data.";
                 detailedBirdActivityData.value = [];
             } else {
-                detailedBirdActivityData.value = transformToHourlyActivity(detailedBirdActivityResponse.data);
+                detailedBirdActivityData.value = detailedBirdActivityResponse.data.map(row => ({
+                    species: row.common_name || row.scientific_name,
+                    hourlyActivity: row.hourly_counts,
+                }));
                 detailedBirdActivityError.value = null;
             }
 

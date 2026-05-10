@@ -19,7 +19,7 @@
                     <p class="text-lg text-[var(--color-error)]">{{ detailedBirdActivityError }}</p>
                 </div>
                 <div v-else class="flex items-center justify-center h-[calc(100%-2rem)]">
-                    <p class="text-lg text-[var(--color-text-muted)]">No bird activity recorded yet for today.</p>
+                    <p class="text-lg text-[var(--color-text-muted)]">No bird activity recorded yet.</p>
                 </div>
             </div>
 

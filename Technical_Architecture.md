@@ -52,7 +52,7 @@ The system is a single-host pipeline. A Raspberry Pi (powered by a battery + sol
 
 | Component | Purpose |
 |---|---|
-| Raspberry Pi (4 / 5) | Host for all services |
+| Raspberry Pi (3b+ / 4 / 5) | Host for all services |
 | WittyPi 4 Mini HAT | Power sequencing (scheduled on/off), real-time clock, voltage/current monitoring via I2C bus 1, address `0x08` |
 | USB microphone | ALSA device, addressed as `plughw:1,0` by default (verify with `arecord -l`) |
 | External battery + solar panel | Off-grid power source |

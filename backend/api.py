@@ -157,6 +157,11 @@ def detections(date: str = Query(None), species: str = Query(None),
     return database.get_detections(str(data_dir), date, species, limit)
 
 
+@app.get("/api/activity")
+def activity():
+    return database.get_activity(str(data_dir))
+
+
 @app.get("/api/species")
 def species():
     return database.get_species(str(data_dir))

@@ -44,15 +44,22 @@ input_details = None
 output_details = None
 labels = []
 data_dir = None
+excluded_species: set[str] = set()
 
 
 def load_config():
-    global config, data_dir
+    global config, data_dir, excluded_species
     config_path = Path(__file__).parent / "config.yml"
     logger.debug("Loading config from %s", config_path)
     with open(config_path) as f:
         config = yaml.safe_load(f)
     data_dir = Path(__file__).parent / config["data_dir"]
+
+    raw = config.get("exclusions") or []
+    excluded_species = {str(name).strip().lower() for name in raw if str(name).strip()}
+    if excluded_species:
+        logger.info("Loaded %d species exclusion(s)", len(excluded_species))
+
     logger.info("Config loaded. data_dir=%s, confidence_threshold=%s",
                 data_dir, config["confidence_threshold"])
 
@@ -93,9 +100,13 @@ def load_labels():
     logger.info("Loaded %d labels. First: %r  Last: %r", len(labels), labels[0], labels[-1])
 
 
-def _sigmoid(x: np.ndarray) -> np.ndarray:
-    """Apply sigmoid to convert raw logits to probabilities (0–1)."""
-    return 1.0 / (1.0 + np.exp(-np.clip(x, -15.0, 15.0)))
+def _sigmoid(x: np.ndarray, sensitivity: float = 1.0) -> np.ndarray:
+    """Sensitivity-scaled sigmoid (BirdNET-Analyzer flat_sigmoid).
+
+    sensitivity=1.0 is the standard sigmoid. >1 sharpens (fewer detections),
+    <1 softens (more detections). Logits are clipped to keep exp() bounded.
+    """
+    return 1.0 / (1.0 + np.exp(-sensitivity * np.clip(x, -15.0, 15.0)))
 
 
 @dataclass
@@ -225,7 +236,7 @@ def analyze_chunk(audio_chunk: np.ndarray, chunk_idx: int) -> list[tuple[str, st
                  chunk_idx, float(raw_logits.min()), float(raw_logits.max()),
                  float(raw_logits.mean()))
 
-    predictions = _sigmoid(raw_logits)
+    predictions = _sigmoid(raw_logits, config.get("sensitivity", 1.0))
 
     logger.debug("  Chunk %d: sigmoid probs min=%.4f, max=%.4f, mean=%.4f",
                  chunk_idx, float(predictions.min()), float(predictions.max()),
@@ -249,6 +260,11 @@ def analyze_chunk(audio_chunk: np.ndarray, chunk_idx: int) -> list[tuple[str, st
             else:
                 scientific_name = label
                 common_name = label
+            if (common_name.lower() in excluded_species
+                    or scientific_name.lower() in excluded_species):
+                logger.debug("  Chunk %d: excluded %s (%s) conf=%.4f",
+                             chunk_idx, common_name, scientific_name, float(conf))
+                continue
             results.append((common_name, scientific_name, float(conf)))
 
     if results:
@@ -319,7 +335,14 @@ def process_wav(wav_path: Path):
         logger.warning("  Audio appears to be silent (near-zero RMS) — skipping inference")
 
     chunk_duration = config["audio"]["chunk_duration"]
+    overlap = float(config["audio"].get("chunk_overlap", 0.0))
+    if overlap < 0 or overlap >= chunk_duration:
+        logger.warning("  Invalid chunk_overlap=%.2f (must be 0 <= overlap < %d) — using 0",
+                       overlap, chunk_duration)
+        overlap = 0.0
+
     chunk_samples = sr * chunk_duration
+    step_samples = int(sr * (chunk_duration - overlap))
     min_samples = int(sr * 1.5)
 
     # Parse timestamp from filename: YYYY-MM-DD-HH-MM-SS.wav
@@ -330,31 +353,35 @@ def process_wav(wav_path: Path):
         logger.warning("  Could not parse timestamp from filename %r, using now()", stem)
         file_dt = datetime.now()
 
-    num_chunks = len(audio) // chunk_samples
-    remainder = len(audio) % chunk_samples
-    logger.debug("  chunk_samples=%d, num_full_chunks=%d, remainder=%d samples",
-                 chunk_samples, num_chunks, remainder)
+    logger.debug("  chunk_samples=%d, step_samples=%d (overlap=%.2fs)",
+                 chunk_samples, step_samples, overlap)
 
     chunks = []
-    for i in range(num_chunks):
-        start = i * chunk_samples
-        chunks.append((i, audio[start:start + chunk_samples]))
+    idx = 0
+    start = 0
+    while start < len(audio):
+        end = start + chunk_samples
+        segment = audio[start:end]
+        if len(segment) >= chunk_samples:
+            chunks.append((idx, segment))
+        elif len(segment) >= min_samples:
+            logger.debug("  Tail chunk (%d samples) >= min (%d) — padding and including",
+                         len(segment), min_samples)
+            chunks.append((idx, np.pad(segment, (0, chunk_samples - len(segment)))))
+        else:
+            if len(segment) > 0:
+                logger.debug("  Tail chunk (%d samples) < min (%d) — discarding",
+                             len(segment), min_samples)
+            break
+        idx += 1
+        start += step_samples
 
-    if remainder >= min_samples:
-        logger.debug("  Last partial chunk (%d samples) >= min (%d) — padding and including",
-                     remainder, min_samples)
-        last_chunk = np.pad(audio[num_chunks * chunk_samples:],
-                            (0, chunk_samples - remainder))
-        chunks.append((num_chunks, last_chunk))
-    elif remainder > 0:
-        logger.debug("  Last partial chunk (%d samples) < min (%d) — discarding",
-                     remainder, min_samples)
+    logger.info("  Running inference on %d chunk(s) (overlap=%.2fs)", len(chunks), overlap)
 
-    logger.info("  Running inference on %d chunk(s)", len(chunks))
-
+    step_seconds = chunk_duration - overlap
     total_detections = 0
     for chunk_idx, chunk_audio in chunks:
-        chunk_offset = chunk_idx * chunk_duration
+        chunk_offset = int(chunk_idx * step_seconds)
         chunk_time = file_dt.replace(
             second=min(59, file_dt.second + chunk_offset)
         )
