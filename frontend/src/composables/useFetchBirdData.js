@@ -11,6 +11,7 @@ export function useFetchBirdData() {
     const latestObservationData = ref((null));
     const recentObservationsData = ref([]);
     const summaryData = ref({});
+    const speciesList = ref([]);
     const latestObservationimageUrl = ref("/default_bird.svg");
 
     const detailedBirdActivityError = ref(null);
@@ -18,6 +19,7 @@ export function useFetchBirdData() {
     const latestObservationError = ref(null);
     const recentObservationsError = ref(null);
     const summaryError = ref(null);
+    const speciesError = ref(null);
 
 
     const fetchChartsData = async (date) => {
@@ -110,22 +112,38 @@ export function useFetchBirdData() {
         }
     };
 
+    const fetchSpecies = async () => {
+        logger.info('Fetching species list');
+        try {
+            const res = await api.get('/species');
+            speciesList.value = res.data;
+            speciesError.value = null;
+        } catch (error) {
+            logger.error('Error fetching species list', error);
+            speciesError.value = "Failed to fetch species list.";
+            speciesList.value = [];
+        }
+    };
+
     return {
         hourlyBirdActivityData,
         detailedBirdActivityData,
         latestObservationData,
         recentObservationsData,
         summaryData,
+        speciesList,
 
         hourlyBirdActivityError,
         detailedBirdActivityError,
         latestObservationError,
         recentObservationsError,
         summaryError,
+        speciesError,
 
         latestObservationimageUrl,
 
         fetchDashboardData,
-        fetchChartsData
+        fetchChartsData,
+        fetchSpecies
     };
 }
