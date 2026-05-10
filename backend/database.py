@@ -164,6 +164,33 @@ def get_detections(data_dir: str, date: str = None, species: str = None,
     return _execute_with_retry(_get_db_path(data_dir), _query)
 
 
+def get_activity(data_dir: str) -> list[dict]:
+    """Return per-species hourly counts across all detections."""
+    def _query(conn):
+        rows = conn.execute(
+            "SELECT common_name, scientific_name, "
+            "CAST(substr(time, 1, 2) AS INTEGER) as hour, "
+            "COUNT(*) as count "
+            "FROM detections "
+            "GROUP BY scientific_name, hour"
+        ).fetchall()
+        agg = {}
+        for r in rows:
+            key = r["scientific_name"]
+            if key not in agg:
+                agg[key] = {
+                    "common_name": r["common_name"],
+                    "scientific_name": r["scientific_name"],
+                    "hourly_counts": [0] * 24,
+                }
+            h = r["hour"]
+            if 0 <= h < 24:
+                agg[key]["hourly_counts"][h] = r["count"]
+        return list(agg.values())
+
+    return _execute_with_retry(_get_db_path(data_dir), _query)
+
+
 def get_species(data_dir: str) -> list[dict]:
     """List all detected species with counts."""
     def _query(conn):

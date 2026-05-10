@@ -19,6 +19,7 @@ _INK = np.array([10, 10, 10], dtype=np.uint8)        # --color-text       #0a0a0
 _TARGET_W = 480
 _TARGET_H = 240
 _DB_RANGE = 60.0  # dynamic range below per-clip peak that maps to ink-dense
+_NOISE_FLOOR = 0.15  # intensities below this render as solid paper (no dither)
 
 
 def generate_spectrogram(audio_data: np.ndarray, sample_rate: int, output_path: str,
@@ -52,7 +53,7 @@ def generate_spectrogram(audio_data: np.ndarray, sample_rate: int, output_path: 
 
     H, W = intensity.shape
     threshold = np.tile(_BAYER, ((H + 3) // 4, (W + 3) // 4))[:H, :W]
-    ink_mask = intensity > threshold
+    ink_mask = intensity > np.maximum(threshold, _NOISE_FLOOR)
 
     out = np.where(ink_mask[..., None], _INK, _PAPER).astype(np.uint8)
     Image.fromarray(out).save(output_path, optimize=True)

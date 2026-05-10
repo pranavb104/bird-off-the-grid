@@ -6,7 +6,11 @@
             <!-- Bird Activity Overview -->
             <div class="d-card p-4 lg:col-span-3 h-[260px] lg:h-[375px]">
                 <DitherShadow />
-                <div class="d-section-label">Bird Activity Overview</div>
+                <div class="flex items-center justify-between border-b border-[#ccc] pb-1.5 mb-4">
+                    <div class="d-section-label !border-b-0 !pb-0 !mb-0">Bird Activity Overview</div>
+                    <button class="d-btn outline !p-1 !text-[10px] !tracking-widest"
+                            @click="openAllBirds">View All</button>
+                </div>
                 <div v-if="!isDataEmpty && !detailedBirdActivityError" class="flex h-[calc(100%-2rem)]">
                     <div class="w-full h-full" :class="isDesktop ? 'lg:w-1/3 lg:pr-2' : ''">
                         <canvas ref="totalObservationsChart" class="h-full w-full"></canvas>
@@ -19,7 +23,7 @@
                     <p class="text-lg text-[var(--color-error)]">{{ detailedBirdActivityError }}</p>
                 </div>
                 <div v-else class="flex items-center justify-center h-[calc(100%-2rem)]">
-                    <p class="text-lg text-[var(--color-text-muted)]">No bird activity recorded yet for today.</p>
+                    <p class="text-lg text-[var(--color-text-muted)]">No bird activity recorded yet.</p>
                 </div>
             </div>
 
@@ -129,6 +133,13 @@
             @close="isSpectrogramModalVisible = false"
         />
 
+        <!-- All Birds Overlay -->
+        <AllBirdsOverlay
+            :is-visible="isAllBirdsOverlayVisible"
+            :species="speciesList"
+            @close="isAllBirdsOverlayVisible = false"
+        />
+
     </div>
 </template>
 
@@ -142,6 +153,7 @@ import { useBirdCharts } from '@/composables/useBirdCharts';
 import { useAudioPlayer } from '@/composables/useAudioPlayer';
 import SpectrogramModal from '@/components/SpectrogramModal.vue';
 import DitherShadow from '@/components/DitherShadow.vue';
+import AllBirdsOverlay from '@/components/AllBirdsOverlay.vue';
 import { getAudioUrl, getSpectrogramUrl } from '@/services/media'
 
 Chart.register(MatrixController, MatrixElement)
@@ -150,7 +162,8 @@ export default {
     name: 'dash-board',
     components: {
         SpectrogramModal,
-        DitherShadow
+        DitherShadow,
+        AllBirdsOverlay
     },
     setup() {
         const {
@@ -159,6 +172,7 @@ export default {
             latestObservationData,
             recentObservationsData,
             summaryData,
+            speciesList,
             latestObservationimageUrl,
 
             hourlyBirdActivityError,
@@ -167,10 +181,12 @@ export default {
             recentObservationsError,
             summaryError,
 
-            fetchDashboardData
+            fetchDashboardData,
+            fetchSpecies
         } = useFetchBirdData();
 
         const isSpectrogramModalVisible = ref(false)
+        const isAllBirdsOverlayVisible = ref(false)
         const currentSpectrogramUrl = ref('')
         const currentAudioUrl = ref('')
         const hourlyActivityChart = ref(null)
@@ -253,6 +269,11 @@ export default {
             isSpectrogramModalVisible.value = true
         }
 
+        const openAllBirds = async () => {
+            await fetchSpecies()
+            isAllBirdsOverlayVisible.value = true
+        }
+
         const formatTimestamp = (dateString) => {
             if (!dateString) return '';
             const date = new Date(dateString);
@@ -295,6 +316,10 @@ export default {
             currentSpectrogramUrl,
             currentAudioUrl,
             showSpectrogram,
+
+            isAllBirdsOverlayVisible,
+            speciesList,
+            openAllBirds,
 
             openLatestWithAudio,
 

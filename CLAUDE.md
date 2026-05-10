@@ -58,8 +58,8 @@ npm run lint     # ESLint
 USB mic → recorder.py (arecord)
         → data/StreamData/<timestamp>.wav   (15s clips)
         → analyzer.py (watchdog)
-        → TFLite inference (3s chunks)
-        → data/detections/<date>/<species>/ (.png spectrogram + .mp3 clip)
+        → TFLite inference (3s chunks, configurable overlap)
+        → data/detections/<date>/<species>/ (.png spectrogram + .wav clip)
         → data/birds.db (SQLite)
         → api.py (FastAPI :7007)
         → frontend Dashboard
@@ -70,8 +70,8 @@ USB mic → recorder.py (arecord)
 | File | Role |
 |---|---|
 | `recorder.py` | Shells out to `arecord` in a loop; writes timestamped WAVs to `data/StreamData/` |
-| `analyzer.py` | `watchdog` observer on `StreamData/`; splits each WAV into 3s chunks, runs TFLite inference, applies sigmoid to logits, saves detections above threshold via `database.py` and `spectrogram.py`; deletes processed WAVs |
-| `api.py` | FastAPI; serves detections, species lists, spectrogram PNGs, audio clips, and system health (including WittyPi power via I2C) from `data/` |
+| `analyzer.py` | `watchdog` observer on `StreamData/`; loads each WAV via `scipy.io.wavfile`, splits into 3s chunks (configurable overlap), runs TFLite inference, applies a sensitivity-scaled sigmoid, drops any species in `exclusions:`, then saves detections above threshold via `database.py` and `spectrogram.py`; deletes processed WAVs |
+| `api.py` | FastAPI; serves detections, species lists, per-species hourly activity, spectrogram PNGs, audio clips, and system health (including WittyPi power via I2C) from `data/` |
 | `database.py` | SQLite wrapper (`data/birds.db`); all writes go through `_execute_with_retry` for busy-lock resilience |
 | `spectrogram.py` | Matplotlib spectrogram PNG generator (dark theme, used at save time) |
 | `config.yml` | Single source of truth for all paths, thresholds, audio device, and port |
@@ -81,7 +81,7 @@ USB mic → recorder.py (arecord)
 - **Model file**: `model/BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite`
 - **Labels file**: `model/BirdNET_GLOBAL_6K_V2.4_Labels_en.txt` (6522 lines, format `Scientific name_Common Name` per line)
 - **Input**: `[1, 144000]` float32 — raw audio at 48 kHz for 3 s
-- **Output**: `[1, 6522]` raw logits — **sigmoid must be applied** before comparing to `confidence_threshold` (done in `analyzer._sigmoid`)
+- **Output**: `[1, 6522]` raw logits — **sigmoid must be applied** before comparing to `confidence_threshold` (done in `analyzer._sigmoid`, scaled by the `sensitivity` config knob — BirdNET-Analyzer's `flat_sigmoid`)
 - `analyzer.py` splits each label on `_` and stores both halves in the DB's `scientific_name` and `common_name` columns.
 
 ### Frontend
@@ -94,6 +94,10 @@ Vue 3 (Options API) with Vue Router. Three routes/views:
 `frontend/src/services/api.js` uses an origin-relative `/api` base URL (overridable via `VUE_APP_API_URL`). `App.vue` opens its WebSocket at `ws://${window.location.host}/ws`. Both rely on the frontend container's nginx (`frontend/nginx.conf`) to proxy `/api/` and `/ws` to `backend:7007` over the internal Docker network — the backend port is not published to the host. For local dev outside Docker (e.g. `npm run serve` against a remote Pi), set `VUE_APP_API_URL` to the backend URL.
 
 `HealthIndicator.vue` is mounted in `App.vue` and renders on all routes as a fixed top-right element (z-index 40). It polls `GET /api/health` every 10s, showing a green/red dot with Online/Offline text. Clicking toggles an expanded panel with WittyPi power metrics (Vin, Vout, Iout). The `/api/health` endpoint reads WittyPi I2C registers via `smbus2`; when unavailable (local dev) it returns `"power": null`.
+
+The dashboard's "Bird Activity Overview" card (per-species totals + species×hour heatmap) shows **all-time** data — it pulls pre-aggregated counts from `GET /api/activity` (one row per species with a 24-element `hourly_counts` array) so it scales without shipping raw detection rows. The separate "Hourly Activity" card stays scoped to today via `GET /api/hourly?date=<today>`.
+
+A "View All" button in the same card header opens `AllBirdsOverlay.vue` — a full-screen cream overlay listing every recorded species (image, common + scientific names, detection count inside a `star.png` badge), sorted by count desc. Species data is fetched on-demand from `GET /api/species` (not bundled into `fetchDashboardData()`). The overlay's footer has Cancel and Save PDF; the PDF is generated client-side by rasterizing the list area with `html2canvas` and slicing into A4 pages with `jspdf` (downloads as `birds-YYYY-MM-DD.pdf`). Bird images use the same pixel-art → `/api/bird-image` → `/default_bird.svg` fallback chain as the latest-observation card.
 
 The dashboard's "latest observation" card resolves its bird image in this order: pixel-art lookup in `frontend/src/services/birdImages.js` (a generated common-name → `/birds/<slug>.<ext>` map) → Wikipedia thumbnail via `GET /api/bird-image` → `/default_bird.svg` on `<img>` error. Pixel-art assets live in `frontend/public/birds/` and are served as plain static files. Regenerate both the assets and the map with `python3 scripts/build_bird_images.py`; the script slugifies filenames, validates each common name against `BirdNET_GLOBAL_6K_V2.4_Labels_en.txt`, and wipes any stale slugs from previous runs. The `<img>` toggles `image-rendering: pixelated` when the URL starts with `/birds/` so pixel art stays crisp while Wikipedia photos render smooth.
 
@@ -129,16 +133,22 @@ audio:
   device: "plughw:1,0"   # USB mic — verify with: arecord -l
   sample_rate: 48000
   chunk_duration: 3       # seconds per inference chunk
+  chunk_overlap: 0.0      # seconds; sliding-window overlap (0 ≤ overlap < chunk_duration)
 
 model:
   path: "model/BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
-  labels: "model/BirdNET_GLOBAL_6K_V2.4_Model_FP16_Labels.txt"
+  labels: "model/BirdNET_GLOBAL_6K_V2.4_Labels_en.txt"
 
-confidence_threshold: 0.7   # sigmoid probability (0–1)
+confidence_threshold: 0.75  # sigmoid probability (0–1)
+sensitivity: 1.0            # flat_sigmoid scaling: >1 sharpens, <1 softens
 
 # False-positive filter: species must be detected N times within window to be saved
-min_detection_count: 2        # set to 1 to disable filtering
-detection_window_seconds: 300  # rolling window in seconds
+min_detection_count: 2          # set to 1 to disable filtering
+detection_window_seconds: 300    # rolling window in seconds
+
+# Species to silently drop during inference (case-insensitive match against
+# either common or scientific name)
+exclusions: []
 ```
 
 All model paths in `config.yml` are relative to the `backend/` directory (i.e. `Path(__file__).parent`).
@@ -146,6 +156,10 @@ All model paths in `config.yml` are relative to the `backend/` directory (i.e. `
 ### False-positive filter
 
 `analyzer.py` includes a `DetectionTracker` that buffers detections per species. A species must be detected `min_detection_count` times within `detection_window_seconds` before any detections are saved to disk/DB. Once confirmed, subsequent detections for that species are saved immediately until the window expires. Set `min_detection_count: 1` to disable filtering entirely.
+
+### Species exclusions
+
+`analyzer.py` consults the `exclusions:` list in `config.yml` inside `analyze_chunk()` *before* the `DetectionTracker`, so excluded species never enter the tracker, never log as `DETECTION`, and never reach disk/DB. Each entry is matched case-insensitively against both the common name and the scientific name, so either form works (e.g. `"House Sparrow"` and `"Passer domesticus"` are equivalent). Excluded predictions emit a single `DEBUG`-level log line for visibility. Use this for chronic false-positive species at your location.
 
 ### Pi deployment
 

@@ -5,11 +5,20 @@ latitude: 0.0
 longitude: 0.0
 
 # Minimum confidence to save a detection (0.0 - 1.0)
-confidence_threshold: 0.8
+confidence_threshold: 0.75
 
 # False-positive filter: require N detections within window before saving
 min_detection_count: 2
 detection_window_seconds: 300
+
+# Species to silently drop during inference (case-insensitive match
+# against either common or scientific name). Useful for chronic
+# false-positive species at your location.
+# Example:
+#   exclusions:
+#     - "House Sparrow"
+#     - "Turdus migratorius"
+exclusions: []
 
 # Audio capture settings
 audio:
@@ -17,6 +26,12 @@ audio:
   sample_rate: 48000
   record_duration: 15       # seconds per recording
   chunk_duration: 3         # seconds per analysis chunk
+  chunk_overlap: 0.0        # seconds of overlap between chunks (0.0 - <chunk_duration)
+
+# Sigmoid sensitivity (BirdNET-Analyzer flat_sigmoid). 1.0 = standard sigmoid.
+# >1.0 sharpens the curve (more confident, fewer detections),
+# <1.0 softens it (more detections, more false positives). Range typically 0.5 - 1.5.
+sensitivity: 1.0
 
 # Model paths (relative to project root)
 model:

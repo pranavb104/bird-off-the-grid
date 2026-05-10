@@ -2,7 +2,7 @@ import api from '@/services/api';
 
 export const getAudioUrl = (storedPath) => {
     if (!storedPath) return '';
-    // storedPath = "detections/YYYY-MM-DD/Species_Name/file.mp3"
+    // storedPath = "detections/YYYY-MM-DD/Species_Name/file.wav"
     const parts = storedPath.replace(/^detections\//, '').split('/');
     const [date, species, filename] = parts;
     const base = api.defaults.baseURL;
