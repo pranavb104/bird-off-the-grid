@@ -253,6 +253,33 @@ The backend port `7007` is **not** published to the host. Only port 80 (frontend
 
 The bar chart of per-species totals and the species×hour heatmap both consume `GET /api/activity`, which returns SQL-aggregated all-time data (`[{common_name, scientific_name, hourly_counts: [24]}]`). The frontend maps each row into the `{species, hourlyActivity}` shape the existing Chart.js renderers expect, so no client-side per-row counting is needed. The separate "Hourly Activity" card stays scoped to today via `GET /api/hourly?date=<today>`.
 
+### All Birds overlay — `AllBirdsOverlay.vue`
+
+A "View All" outline button in the Bird Activity Overview card header opens a full-screen cream overlay listing every recorded species — bird image (left), common + scientific names (center), and detection count inside a `star.png` badge (right). Sorted by count desc; data comes from `GET /api/species` (already sorted server-side) and is fetched lazily when the overlay opens, *not* on dashboard load. Bird images reuse the dashboard's pixel-art → `/api/bird-image` → `/default_bird.svg` fallback chain.
+
+```
+                              click
+  Bird Activity Overview ─────────► AllBirdsOverlay (full-screen, cream)
+   [chart] [chart] [View All]            ┌──────────────────────────┐
+                                         │ [img]  Common name       │
+                                         │        Scientific name   │  ★ 42
+                                         │ ⋯                        │
+                                         │                          │
+                                         │ [Cancel]   [Save PDF]    │
+                                         └──────────────────────────┘
+                                                     │
+                                                     ▼ Save PDF
+                                          html2canvas(captureArea, scale=2)
+                                                     │
+                                                     ▼
+                                          jsPDF — slice into A4 pages
+                                                     │
+                                                     ▼
+                                          downloads birds-YYYY-MM-DD.pdf
+```
+
+The footer has Cancel (closes overlay, returns to dashboard) and Save PDF. The PDF is generated entirely client-side: `html2canvas` rasterizes the scrollable list area at 2× scale with the page's cream background, then `jsPDF` paginates by repeated `addImage` calls with negative `position` offsets so a long list spans multiple A4 pages. No new backend route is needed.
+
 ### Bird image resolution (Dashboard "latest observation" card)
 
 ```
@@ -327,6 +354,7 @@ Why these specific Docker bits matter:
 | Routing | `vue-router` 4 |
 | HTTP client | `axios` |
 | Charts | `chart.js` + `chartjs-chart-matrix` |
+| PDF export (All Birds overlay) | `html2canvas` + `jspdf` |
 | Icons | `@fortawesome/vue-fontawesome` |
 | Styling | Tailwind v4, custom canvas-based Bayer dithering |
 | Web server (prod) | `nginx:alpine` (reverse proxy + static SPA) |
