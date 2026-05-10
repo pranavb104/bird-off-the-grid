@@ -103,12 +103,18 @@ If the venv from `install.sh` is set up:
 ```bash
 source ~/birdnet-venv/bin/activate
 python - <<'PY'
-import librosa, numpy as np
-y, sr = librosa.load("/tmp/test.wav", sr=48000, mono=True)
+import numpy as np
+from scipy.io import wavfile
+sr, y = wavfile.read("/tmp/test.wav")
+if y.ndim == 2:
+    y = y.mean(axis=1)
+y = y.astype(np.float32) / 32768.0
 print(f"sr={sr} samples={len(y)} duration={len(y)/sr:.2f}s")
 print(f"min={y.min():.4f} max={y.max():.4f} rms={np.sqrt(np.mean(y**2)):.4f}")
 PY
 ```
+
+This mirrors the exact load path in `analyzer.py` (`scipy.io.wavfile` → mono mixdown → float32 / 32768).
 
 Interpretation:
 
@@ -231,4 +237,4 @@ When something's wrong with audio, walk this list top-to-bottom:
 - [ ] WAVs are removed within seconds of appearing (analyzer is processing).
 - [ ] `python backend/test/test_model.py` detects the expected reference species.
 
-If all of the above pass and detections still aren't surfacing, the issue is downstream of audio — check `confidence_threshold` and `min_detection_count` in `config.yml`, or read `Technical_Architecture.md` for the full pipeline.
+If all of the above pass and detections still aren't surfacing, the issue is downstream of audio — check `confidence_threshold`, `sensitivity`, `min_detection_count`, and the `exclusions:` list in `config.yml`, or read `Technical_Architecture.md` for the full pipeline.

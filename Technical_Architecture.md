@@ -19,7 +19,7 @@ The system is a single-host pipeline. A Raspberry Pi (powered by a battery + sol
 │                                                              │           │
 │                          ┌───────────────────────────────────┘           │
 │                          ▼                                               │
-│         data/detections/<date>/<species>/*.png + *.mp3                   │
+│         data/detections/<date>/<species>/*.png + *.wav                   │
 │                          │                                               │
 │                          ▼                                               │
 │                    data/birds.db (SQLite)                                │
@@ -84,7 +84,7 @@ Output: `data/StreamData/*.wav` — consumed and deleted by the analyzer.
 
 ## 4. Inference — `backend/analyzer.py`
 
-The analyzer is the heart of the pipeline. It uses [`watchdog`](https://pypi.org/project/watchdog/) to observe `data/StreamData/`. When a new `.wav` arrives, it waits for the file size to stabilize (so it doesn't read a half-written file), loads it with `librosa` at 48 kHz mono, splits it into 3-second chunks, and runs each chunk through the BirdNET TFLite interpreter.
+The analyzer is the heart of the pipeline. It uses [`watchdog`](https://pypi.org/project/watchdog/) to observe `data/StreamData/`. When a new `.wav` arrives, it waits for the file size to stabilize (so it doesn't read a half-written file), loads it with `scipy.io.wavfile` (the recorder writes mono 48 kHz S16_LE, matching the model's input), splits it into 3-second chunks (with optional sliding-window overlap from `audio.chunk_overlap`), and runs each chunk through the BirdNET TFLite interpreter.
 
 ### TFLite backend selection
 
@@ -103,7 +103,9 @@ except: try:    from tflite_runtime.interpreter import Interpreter   # Pi fallba
 | Input | `[1, 144000]` | `float32` | 3 s of raw audio at 48 kHz |
 | Output | `[1, 6522]` | `float32` | **Raw logits** — must pass through `_sigmoid` to get probabilities |
 
-`_sigmoid(x) = 1 / (1 + exp(-clip(x, -15, 15)))` — the clip prevents overflow on extreme logits. Probabilities `≥ confidence_threshold` (default `0.8`) become candidate detections.
+`_sigmoid(x, sensitivity) = 1 / (1 + exp(-sensitivity · clip(x, -15, 15)))` — BirdNET-Analyzer's `flat_sigmoid`. The clip prevents overflow on extreme logits; `sensitivity` (default `1.0`, configurable in `config.yml`) sharpens the curve when `>1` and softens it when `<1`. Probabilities `≥ confidence_threshold` (default `0.75`) become candidate detections.
+
+Each candidate is then checked against the `exclusions:` list in `config.yml` (case-insensitive match against either common or scientific name). Excluded species are dropped *before* the false-positive tracker, so they never log as `DETECTION`, never enter the rolling-window buffer, and never reach disk or DB.
 
 The label file `BirdNET_GLOBAL_6K_V2.4_Labels_en.txt` has 6522 lines formatted `Scientific name_Common Name`. The analyzer splits on the first `_` and stores both halves separately.
 
@@ -112,15 +114,16 @@ The label file `BirdNET_GLOBAL_6K_V2.4_Labels_en.txt` has 6522 lines formatted `
 ```
 process_wav(path):
     1. wait for file size to stabilize (handles arecord still writing)
-    2. librosa.load(path, sr=48000, mono=True)
+    2. scipy.io.wavfile.read(path) → (sr, int16 samples); cast to float32, /32768
     3. parse timestamp from filename
-    4. split into 3 s chunks; pad/discard remainder by min_samples (1.5 s)
+    4. split into 3 s chunks (step = chunk_duration − chunk_overlap);
+       pad/discard remainder by min_samples (1.5 s)
     5. for each chunk:
          a. interpreter.invoke()  → raw logits
-         b. sigmoid → probabilities
-         c. for every prob ≥ threshold:
+         b. flat_sigmoid(logits, sensitivity) → probabilities
+         c. for every prob ≥ threshold and species ∉ exclusions:
               detection_tracker.track(...) → list of detections to persist
-              for each: save_detection(...)  # PNG + MP3 + DB row
+              for each: save_detection(...)  # PNG + WAV + DB row
     6. unlink the WAV
 ```
 
@@ -148,7 +151,7 @@ Set `min_detection_count: 1` in `config.yml` to disable filtering entirely.
 For each confirmed detection the analyzer writes three artifacts:
 
 1. **Spectrogram PNG** via `spectrogram.py` (matplotlib, dark theme) → `data/detections/<date>/<species>/<HH-MM-SS>_<conf>.png`
-2. **MP3 clip** by writing a temp WAV with `soundfile`, then transcoding via `ffmpeg -q:a 6` → `<...>.mp3`
+2. **WAV clip** written directly with `soundfile` (no lossy re-encoding) → `<...>.wav`
 3. **SQLite row** via `database.insert_detection(...)` — relative paths only
 
 ---
@@ -166,7 +169,7 @@ CREATE TABLE detections (
     scientific_name TEXT NOT NULL,
     confidence      REAL NOT NULL,    -- sigmoid probability
     file_path       TEXT NOT NULL,    -- relative PNG path
-    audio_path      TEXT NOT NULL     -- relative MP3 path
+    audio_path      TEXT NOT NULL     -- relative WAV path
 );
 CREATE INDEX idx_date    ON detections(date);
 CREATE INDEX idx_species ON detections(scientific_name);
@@ -186,12 +189,13 @@ All writes go through `_execute_with_retry`, which retries up to 3 times with li
 |---|---|---|
 | GET | `/api/health` | Liveness + WittyPi power (Vin / Vout / Iout via I2C, or `null` when unavailable) |
 | GET | `/api/recent?limit=N` | Latest N detections |
-| GET | `/api/hourly?date=YYYY-MM-DD` | Detection counts grouped by hour |
+| GET | `/api/hourly?date=YYYY-MM-DD` | Detection counts grouped by hour for a single day |
 | GET | `/api/overview` | Totals, unique species count, today/week counts, top 10 species |
 | GET | `/api/detections?date=&species=&limit=` | Filtered list |
+| GET | `/api/activity` | Per-species hourly counts across all detections — `[{common_name, scientific_name, hourly_counts: [24]}]`. Powers the dashboard's all-time Bird Activity Overview |
 | GET | `/api/species` | All detected species with counts and last-seen date |
 | GET | `/api/spectrogram/{date}/{species}/{filename}` | Serves PNG (path-traversal guarded) |
-| GET | `/api/audio/{date}/{species}/{filename}` | Serves MP3 |
+| GET | `/api/audio/{date}/{species}/{filename}` | Serves the detection WAV clip |
 | GET | `/api/bird-image?species=` | Cache-first; on miss fetches Wikipedia thumbnail and caches to `data/bird_images/` |
 | GET | `/api/setup-complete` | Whether `birdnet.wpi` schedule has been written |
 | POST | `/api/sync-time` | Sets Pi system clock from browser ISO time, then `system_to_rtc` to WittyPi RTC |
@@ -244,6 +248,10 @@ The backend port `7007` is **not** published to the host. Only port 80 (frontend
 ### Health indicator
 
 `HealthIndicator.vue` mounts in `App.vue` and renders fixed top-right on every route. Polls `GET /api/health` every 10 s and displays a green/red dot. Clicking expands a panel showing WittyPi voltage/current.
+
+### Bird Activity Overview (Dashboard top card)
+
+The bar chart of per-species totals and the species×hour heatmap both consume `GET /api/activity`, which returns SQL-aggregated all-time data (`[{common_name, scientific_name, hourly_counts: [24]}]`). The frontend maps each row into the `{species, hourlyActivity}` shape the existing Chart.js renderers expect, so no client-side per-row counting is needed. The separate "Hourly Activity" card stays scoped to today via `GET /api/hourly?date=<today>`.
 
 ### Bird image resolution (Dashboard "latest observation" card)
 
@@ -305,7 +313,7 @@ Why these specific Docker bits matter:
 | Layer | Tech |
 |---|---|
 | Audio capture | ALSA `arecord` (subprocess), Python 3.11 |
-| Audio loading | `librosa`, `soundfile` |
+| Audio loading | `scipy.io.wavfile` (analyzer); `soundfile` (writes detection WAV clips) |
 | Inference | `ai-edge-litert` (preferred) → `tflite-runtime` (Pi fallback) → `tensorflow.lite` |
 | Spectrograms | `matplotlib` |
 | File watching | `watchdog` |

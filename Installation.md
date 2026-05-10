@@ -15,7 +15,7 @@ Pick one. They're mutually exclusive on the same Pi.
 
 | Item | Recommended |
 |---|---|
-| Raspberry Pi | Pi 4 (4 GB+) or Pi 5 |
+| Raspberry Pi | Pi 3B+, Pi 4 (4 GB+), or Pi 5 |
 | Storage | 32 GB+ microSD (Class 10 / A2) |
 | OS | Raspberry Pi OS (Bookworm, 64-bit) |
 | USB microphone | Any ALSA-compatible USB mic |
@@ -120,10 +120,21 @@ audio:
   sample_rate: 48000
   record_duration: 15
   chunk_duration: 3
+  chunk_overlap: 0.0       # seconds; sliding-window overlap between inference chunks
 
-confidence_threshold: 0.8
+confidence_threshold: 0.75
+sensitivity: 1.0            # flat_sigmoid scaling: >1 sharpens, <1 softens
 min_detection_count: 2
 detection_window_seconds: 300
+
+# Species to silently drop during inference (case-insensitive match against
+# either common or scientific name). Useful for chronic false-positive
+# species at your location.
+exclusions: []
+# Example:
+#   exclusions:
+#     - "House Sparrow"
+#     - "Turdus migratorius"
 
 api:
   host: "0.0.0.0"
@@ -319,5 +330,6 @@ Whichever path you used, the first time you load the dashboard:
 | Permission denied on `/dev/i2c-1` (Docker) | Same idea for the `i2c` group (GID `988` by default). |
 | Frontend loads but says "Offline" | Backend not reachable. In Docker: `docker compose logs backend`. Native: `tail -f backend/logs/api.log`. |
 | `ai-edge-litert` install fails on Pi | Expected — `pip install tflite-runtime` and re-run. The Dockerfile already handles this fallback automatically. |
+| Same false-positive species keeps appearing on near-silent recordings | Add it (common or scientific name) to `exclusions:` in `backend/config.yml` and restart the analyzer. Excluded species are dropped before the false-positive tracker. |
 
 For mic-specific verification, see `Testing_Audio.md`.
