@@ -18,7 +18,7 @@ detection_window_seconds: 300
 #   exclusions:
 #     - "House Sparrow"
 #     - "Turdus migratorius"
-exclusions: []
+exclusions: [Spotted Crake]
 
 # Audio capture settings
 audio:
