@@ -261,24 +261,35 @@ A "View All" outline button in the Bird Activity Overview card header opens a fu
                               click
   Bird Activity Overview ─────────► AllBirdsOverlay (full-screen, cream)
    [chart] [chart] [View All]            ┌──────────────────────────┐
+                                         │ [←]  All Recorded …  [×] │   ← top bar
                                          │ [img]  Common name       │
                                          │        Scientific name   │  ★ 42
-                                         │ ⋯                        │
-                                         │                          │
-                                         │ [Cancel]   [Save PDF]    │
+                                         │ ⋯  (click a row)         │
                                          └──────────────────────────┘
                                                      │
-                                                     ▼ Save PDF
-                                          html2canvas(captureArea, scale=2)
+                                                     ▼ click row
+                                            GET /api/detections
+                                            ?species=<sci_name>&limit=5
                                                      │
                                                      ▼
-                                          jsPDF — slice into A4 pages
+                                         ┌──────────────────────────┐
+                                         │ [←]  Common name     [×] │
+                                         │  Scientific name         │
+                                         │  Latest 5 recordings     │
+                                         │  Feb 20, 2026  22:07:59  │
+                                         │                    100%  │
+                                         │  ⋯                       │
+                                         └──────────────────────────┘
+                                                     │
+                                                     ▼ click recording
+                                          emit('play-detection', row)
                                                      │
                                                      ▼
-                                          downloads birds-YYYY-MM-DD.pdf
+                                          Dashboard.showSpectrogram
+                                          → SpectrogramModal (image + audio)
 ```
 
-The footer has Cancel (closes overlay, returns to dashboard) and Save PDF. The PDF is generated entirely client-side: `html2canvas` rasterizes the scrollable list area at 2× scale with the page's cream background, then `jsPDF` paginates by repeated `addImage` calls with negative `position` offsets so a long list spans multiple A4 pages. No new backend route is needed.
+The top bar holds two buttons in both views: ← (top-left) and × (top-right). On the default list view both close the overlay; on the detail view ← pops back to the list while × still closes. Clicking a recording row emits `play-detection` up to `Dashboard.vue`, which routes through the same `showSpectrogram` handler used by Recent Observations to open `SpectrogramModal`. No PDF export — the previous `html2canvas` + `jsPDF` rasterizer was removed in favour of the per-species drill-down.
 
 ### Bird image resolution (Dashboard "latest observation" card)
 
@@ -354,7 +365,6 @@ Why these specific Docker bits matter:
 | Routing | `vue-router` 4 |
 | HTTP client | `axios` |
 | Charts | `chart.js` + `chartjs-chart-matrix` |
-| PDF export (All Birds overlay) | `html2canvas` + `jspdf` |
 | Icons | `@fortawesome/vue-fontawesome` |
 | Styling | Tailwind v4, custom canvas-based Bayer dithering |
 | Web server (prod) | `nginx:alpine` (reverse proxy + static SPA) |
