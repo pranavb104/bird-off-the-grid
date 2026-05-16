@@ -222,3 +222,15 @@ def get_species(data_dir: str) -> list[dict]:
         return [dict(r) for r in rows]
 
     return _execute_with_retry(_get_db_path(data_dir), _query)
+
+
+def species_counts(data_dir: str) -> dict[str, int]:
+    """Return {scientific_name: total_detection_count} across the whole DB."""
+    def _query(conn):
+        rows = conn.execute(
+            "SELECT scientific_name, COUNT(*) AS c "
+            "FROM detections GROUP BY scientific_name"
+        ).fetchall()
+        return {r["scientific_name"]: r["c"] for r in rows}
+
+    return _execute_with_retry(_get_db_path(data_dir), _query)

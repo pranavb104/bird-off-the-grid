@@ -109,6 +109,11 @@ def _sigmoid(x: np.ndarray, sensitivity: float = 1.0) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-sensitivity * np.clip(x, -15.0, 15.0)))
 
 
+max_per_species: int = 0
+_species_counts: dict[str, int] = {}
+_capped_species: set[str] = set()
+
+
 @dataclass
 class PendingDetection:
     """A detection buffered until the species reaches the confirmation threshold."""
@@ -395,10 +400,22 @@ def process_wav(wav_path: Path):
                 common_name, scientific_name, confidence,
             )
             for det in to_save:
+                if max_per_species and det.scientific_name in _capped_species:
+                    logger.debug("Capped, skipping: %s", det.common_name)
+                    continue
                 save_detection(
                     det.audio_chunk, det.sr, det.detection_time,
                     det.common_name, det.scientific_name, det.confidence,
                 )
+                if max_per_species:
+                    new_count = _species_counts.get(det.scientific_name, 0) + 1
+                    _species_counts[det.scientific_name] = new_count
+                    if new_count >= max_per_species:
+                        _capped_species.add(det.scientific_name)
+                        logger.info(
+                            "Species '%s' reached cap (%d); further detections will be skipped",
+                            det.common_name, max_per_species,
+                        )
 
     logger.info("  Total detections in %s: %d", wav_path.name, total_detections)
 
@@ -495,6 +512,18 @@ def main():
 
     logger.info("Initialising database at %s", data_dir)
     database.init_db(str(data_dir))
+
+    global max_per_species, _species_counts, _capped_species
+    max_per_species = int(config.get("max_detections_per_species", 0) or 0)
+    if max_per_species > 0:
+        _species_counts = database.species_counts(str(data_dir))
+        _capped_species = {s for s, c in _species_counts.items() if c >= max_per_species}
+        logger.info(
+            "Per-species cap: %d (already capped: %d species)",
+            max_per_species, len(_capped_species),
+        )
+    else:
+        logger.info("Per-species cap disabled")
 
     stream_dir = data_dir / "StreamData"
     stream_dir.mkdir(parents=True, exist_ok=True)

@@ -20,6 +20,10 @@ detection_window_seconds: 300
 #     - "Turdus migratorius"
 exclusions: [Spotted Crake]
 
+# Stop saving a species once it has this many rows in birds.db (lifetime).
+# Set to 0 to disable. Raising the value or clearing the DB re-enables saving.
+max_detections_per_species: 0
+
 # Audio capture settings
 audio:
   device: "plughw:1,0"     # USB PnP Sound Device (card 1, device 0)
