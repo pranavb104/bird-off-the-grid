@@ -138,7 +138,7 @@ def health():
 
 @app.get("/api/recent")
 def recent(limit: int = Query(10, ge=1, le=100)):
-    return database.get_recent(str(data_dir), limit)
+    return database.get_recent_distinct_species(str(data_dir), limit)
 
 
 @app.get("/api/hourly")
