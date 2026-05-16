@@ -245,44 +245,74 @@ def sync_time(req: SyncTimeRequest):
     return {"status": "ok", "time_set": date_str}
 
 
+class TimeSlot(BaseModel):
+    hour: int      # 1..23 — hour of day the Pi turns ON
+    duration: int  # 1..3  — number of hours to stay ON
+
+
 class ScheduleRequest(BaseModel):
-    start_datetime: str   # ISO-8601 local datetime, e.g. "2024-03-01T05:00:00"
+    start_datetime: str       # ISO-8601 local datetime
     end_datetime: str
-    schedule_type: str    # "dawn_dusk" | "morning_afternoon" | "custom"
-    on_time: str = None   # "HH:MM" — required for custom
-    off_time: str = None  # "HH:MM" — required for custom
+    slots: list[TimeSlot]     # 1..3 user-defined on-windows per 24h day
+
+
+MAX_SLOTS = 3
+MAX_TOTAL_HOURS = 4
 
 
 def _build_wpi_content(req: ScheduleRequest) -> str:
-    """Generate WittyPi .wpi schedule file content."""
+    """Generate WittyPi .wpi schedule file content from user-defined on-windows."""
     try:
         start_dt = datetime.fromisoformat(req.start_datetime)
         end_dt = datetime.fromisoformat(req.end_datetime)
     except ValueError as exc:
         raise ValueError(f"Invalid datetime format: {exc}") from exc
 
+    if not req.slots:
+        raise ValueError("At least one time slot is required.")
+    if len(req.slots) > MAX_SLOTS:
+        raise ValueError(f"At most {MAX_SLOTS} time slots are allowed.")
+
+    total_hours = sum(s.duration for s in req.slots)
+    if total_hours > MAX_TOTAL_HOURS:
+        raise ValueError(
+            f"Total runtime ({total_hours}h) exceeds the {MAX_TOTAL_HOURS}h daily limit."
+        )
+
+    for s in req.slots:
+        if not (1 <= s.hour <= 23):
+            raise ValueError(f"Slot hour {s.hour} must be between 1 and 23.")
+        if not (1 <= s.duration <= 3):
+            raise ValueError(f"Slot duration {s.duration} must be between 1 and 3.")
+        if s.hour + s.duration > 24:
+            raise ValueError(
+                f"Slot starting at {s.hour:02d}:00 for {s.duration}h goes past midnight."
+            )
+
+    sorted_slots = sorted(req.slots, key=lambda s: s.hour)
+    for i in range(1, len(sorted_slots)):
+        prev, cur = sorted_slots[i - 1], sorted_slots[i]
+        gap = cur.hour - (prev.hour + prev.duration)
+        if gap < 1:
+            raise ValueError("Time slots must be at least 1 hour apart.")
+
     begin_date = start_dt.strftime("%Y-%m-%d")
     end_date = end_dt.strftime("%Y-%m-%d")
 
-    if req.schedule_type == "dawn_dusk":
-        begin_time = "05:00:00"
-        cycle = "ON  H1\nOFF H12\nON  H1\nOFF H10"
-    elif req.schedule_type == "morning_afternoon":
-        begin_time = "08:00:00"
-        cycle = "ON  H1\nOFF H7\nON  H1\nOFF H15"
-    elif req.schedule_type == "custom":
-        if not req.on_time or not req.off_time:
-            raise ValueError("on_time and off_time are required for custom schedule")
-        on_h, on_m = map(int, req.on_time.split(":"))
-        off_h, off_m = map(int, req.off_time.split(":"))
-        begin_time = f"{on_h:02d}:{on_m:02d}:00"
-        on_dur = (off_h * 60 + off_m - on_h * 60 - on_m) % (24 * 60)
-        off_dur = 24 * 60 - on_dur
-        on_dur_h = max(1, round(on_dur / 60))
-        off_dur_h = max(1, round(off_dur / 60))
-        cycle = f"ON  H{on_dur_h}\nOFF H{off_dur_h}"
-    else:
-        raise ValueError(f"Unknown schedule_type: {req.schedule_type!r}")
+    first = sorted_slots[0]
+    begin_time = f"{first.hour:02d}:00:00"
+
+    cycle_lines = []
+    for i, slot in enumerate(sorted_slots):
+        cycle_lines.append(f"ON  H{slot.duration}")
+        if i < len(sorted_slots) - 1:
+            nxt = sorted_slots[i + 1]
+            off = nxt.hour - (slot.hour + slot.duration)
+        else:
+            off = (first.hour + 24) - (slot.hour + slot.duration)
+        cycle_lines.append(f"OFF H{off}")
+
+    cycle = "\n".join(cycle_lines)
 
     return (
         f"BEGIN {begin_date} {begin_time}\n"
