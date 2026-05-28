@@ -94,6 +94,25 @@ def get_recent(data_dir: str, limit: int = 10) -> list[dict]:
     return _execute_with_retry(_get_db_path(data_dir), _query)
 
 
+def get_recent_distinct_species(data_dir: str, limit: int = 10) -> list[dict]:
+    """Most recent detection per distinct species, newest first."""
+    def _query(conn):
+        rows = conn.execute(
+            "SELECT id, date, time, common_name, scientific_name, "
+            "       confidence, file_path, audio_path "
+            "FROM ( "
+            "    SELECT *, ROW_NUMBER() OVER ( "
+            "        PARTITION BY scientific_name ORDER BY date DESC, time DESC"
+            "    ) AS rn FROM detections"
+            ") WHERE rn = 1 "
+            "ORDER BY date DESC, time DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    return _execute_with_retry(_get_db_path(data_dir), _query)
+
+
 def get_by_hour(data_dir: str, date: str = None) -> list[dict]:
     """Get detections grouped by hour for a given date (default: today)."""
     if date is None:
@@ -201,5 +220,17 @@ def get_species(data_dir: str) -> list[dict]:
             "ORDER BY count DESC"
         ).fetchall()
         return [dict(r) for r in rows]
+
+    return _execute_with_retry(_get_db_path(data_dir), _query)
+
+
+def species_counts(data_dir: str) -> dict[str, int]:
+    """Return {scientific_name: total_detection_count} across the whole DB."""
+    def _query(conn):
+        rows = conn.execute(
+            "SELECT scientific_name, COUNT(*) AS c "
+            "FROM detections GROUP BY scientific_name"
+        ).fetchall()
+        return {r["scientific_name"]: r["c"] for r in rows}
 
     return _execute_with_retry(_get_db_path(data_dir), _query)

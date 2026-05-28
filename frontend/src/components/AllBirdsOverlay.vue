@@ -11,23 +11,48 @@
       v-if="isVisible"
       class="fixed inset-0 z-50 bg-[var(--color-background)] flex flex-col"
     >
-      <!-- Header -->
-      <header class="px-6 py-4 border-b-[1.5px] border-[var(--color-border)] bg-[var(--color-background)]">
-        <h2 class="font-['IBM_Plex_Mono'] uppercase tracking-widest text-base lg:text-lg text-[var(--color-text)]">
-          All Recorded Birds
-        </h2>
-        <p class="text-xs text-[var(--color-text-muted)] mt-1 font-['IBM_Plex_Mono']">
-          {{ species.length }} species &middot; {{ totalCount }} detection{{ totalCount === 1 ? '' : 's' }}
-        </p>
+      <!-- Top bar -->
+      <header class="overlay-topbar">
+        <button
+          type="button"
+          class="topbar-btn"
+          @click="onBack"
+          :aria-label="selectedBird ? 'Back to list' : 'Close overlay'"
+        >
+          <span aria-hidden="true">←</span>
+        </button>
+        <div class="overlay-titles">
+          <h2 class="font-['IBM_Plex_Mono'] uppercase tracking-widest text-base lg:text-lg text-[var(--color-text)]">
+            {{ selectedBird ? selectedBird.common_name : 'All Recorded Birds' }}
+          </h2>
+          <p v-if="!selectedBird" class="text-xs text-[var(--color-text-muted)] mt-1 font-['IBM_Plex_Mono']">
+            {{ species.length }} species &middot; {{ totalCount }} detection{{ totalCount === 1 ? '' : 's' }}
+          </p>
+          <p v-else class="text-xs italic text-[var(--color-text-secondary)] mt-1 font-['IBM_Plex_Mono']">
+            {{ selectedBird.scientific_name }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="topbar-btn"
+          @click="$emit('close')"
+          aria-label="Close overlay"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
       </header>
 
-      <!-- Capture area: this is what gets PDF'd -->
-      <div ref="captureArea" class="flex-1 overflow-y-auto px-4 lg:px-6 py-6 bg-[var(--color-background)]">
+      <!-- List view -->
+      <div
+        v-if="!selectedBird"
+        class="flex-1 overflow-y-auto px-4 lg:px-6 py-6 bg-[var(--color-background)]"
+      >
         <ul v-if="species.length" class="space-y-4 max-w-3xl mx-auto">
           <li
             v-for="bird in species"
             :key="bird.scientific_name"
-            class="d-card flex items-center gap-4 p-3"
+            class="d-card flex items-center gap-4 p-3 cursor-pointer transition-transform hover:-translate-y-px"
+            @click="openBird(bird)"
           >
             <DitherShadow />
             <img
@@ -61,25 +86,52 @@
         </p>
       </div>
 
-      <!-- Bottom action bar -->
-      <footer class="px-6 py-4 border-t-[1.5px] border-[var(--color-border)] bg-[var(--color-background)] flex justify-end gap-3">
-        <button class="d-btn outline" @click="$emit('close')">Cancel</button>
-        <button
-          class="d-btn"
-          :disabled="exporting || !species.length"
-          @click="exportPdf"
-        >
-          {{ exporting ? 'Saving...' : 'Save PDF' }}
-        </button>
-      </footer>
+      <!-- Detail view -->
+      <div
+        v-else
+        class="flex-1 overflow-y-auto px-4 lg:px-6 py-6 bg-[var(--color-background)]"
+      >
+        <div class="max-w-3xl mx-auto">
+          <p class="d-section-label">Latest 5 recordings</p>
+
+          <p v-if="loadingRecordings" class="text-center text-[var(--color-text-muted)] py-12">
+            Loading recordings…
+          </p>
+          <p v-else-if="recordingsError" class="text-center text-[var(--color-error)] py-12">
+            {{ recordingsError }}
+          </p>
+          <p v-else-if="!recordings.length" class="text-center text-[var(--color-text-muted)] py-12">
+            No recordings yet for this species.
+          </p>
+          <ul v-else class="space-y-3">
+            <li
+              v-for="r in recordings"
+              :key="r.id"
+              class="d-card flex items-center justify-between gap-4 p-4 cursor-pointer transition-transform hover:-translate-y-px"
+              @click="$emit('play-detection', r)"
+            >
+              <DitherShadow />
+              <div class="flex flex-col min-w-0">
+                <span class="font-['IBM_Plex_Mono'] text-sm lg:text-base text-[var(--color-text)]">
+                  {{ formatDate(r.date) }}
+                </span>
+                <span class="font-['IBM_Plex_Mono'] text-xs text-[var(--color-text-secondary)] mt-1">
+                  {{ r.time }}
+                </span>
+              </div>
+              <span class="font-['IBM_Plex_Mono'] text-sm text-[var(--color-text-secondary)] shrink-0">
+                {{ Math.round((r.confidence || 0) * 100) }}%
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   </Transition>
 </template>
 
 <script>
 import { ref, computed, watch } from 'vue'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
 import birdImages from '@/services/birdImages'
 import api from '@/services/api'
 import DitherShadow from './DitherShadow.vue'
@@ -92,12 +144,15 @@ export default {
     isVisible: { type: Boolean, default: false },
     species: { type: Array, default: () => [] },
   },
-  emits: ['close'],
-  setup(props) {
-    const captureArea = ref(null)
-    const exporting = ref(false)
+  emits: ['close', 'play-detection'],
+  setup(props, { emit }) {
     const imageUrls = ref({})
     const failedOnce = ref({})
+
+    const selectedBird = ref(null)
+    const recordings = ref([])
+    const loadingRecordings = ref(false)
+    const recordingsError = ref(null)
 
     const totalCount = computed(() =>
       props.species.reduce((s, b) => s + (b.count || 0), 0)
@@ -138,55 +193,111 @@ export default {
       { immediate: true }
     )
 
-    const exportPdf = async () => {
-      if (!captureArea.value) return
-      exporting.value = true
-      try {
-        const bg = getComputedStyle(document.body)
-          .getPropertyValue('--color-background').trim() || '#f0ece3'
-
-        const canvas = await html2canvas(captureArea.value, {
-          scale: 2,
-          backgroundColor: bg,
-          useCORS: true,
-          windowWidth: captureArea.value.scrollWidth,
-          windowHeight: captureArea.value.scrollHeight,
-        })
-
-        const pdf = new jsPDF({ unit: 'pt', format: 'a4' })
-        const pageW = pdf.internal.pageSize.getWidth()
-        const pageH = pdf.internal.pageSize.getHeight()
-        const imgH = (canvas.height * pageW) / canvas.width
-
-        let heightLeft = imgH
-        let position = 0
-        pdf.addImage(canvas, 'PNG', 0, position, pageW, imgH)
-        heightLeft -= pageH
-        while (heightLeft > 0) {
-          position = heightLeft - imgH
-          pdf.addPage()
-          pdf.addImage(canvas, 'PNG', 0, position, pageW, imgH)
-          heightLeft -= pageH
+    // Reset the detail view whenever the overlay is hidden so the next open
+    // starts back on the list.
+    watch(
+      () => props.isVisible,
+      (open) => {
+        if (!open) {
+          selectedBird.value = null
+          recordings.value = []
+          recordingsError.value = null
         }
-        const today = new Date().toISOString().slice(0, 10)
-        pdf.save(`birds-${today}.pdf`)
+      }
+    )
+
+    const openBird = async (bird) => {
+      selectedBird.value = bird
+      recordings.value = []
+      recordingsError.value = null
+      loadingRecordings.value = true
+      try {
+        const res = await api.get('/detections', {
+          params: { species: bird.scientific_name, limit: 5 },
+        })
+        recordings.value = Array.isArray(res.data) ? res.data : []
       } catch (e) {
-        console.error('PDF export failed', e)
+        recordingsError.value = 'Failed to load recordings.'
       } finally {
-        exporting.value = false
+        loadingRecordings.value = false
       }
     }
 
+    const onBack = () => {
+      if (selectedBird.value) {
+        selectedBird.value = null
+        recordings.value = []
+        recordingsError.value = null
+      } else {
+        emit('close')
+      }
+    }
+
+    const formatDate = (iso) => {
+      if (!iso) return ''
+      const d = new Date(`${iso}T00:00:00`)
+      if (isNaN(d.getTime())) return iso
+      return d.toLocaleDateString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric',
+      })
+    }
+
     return {
-      captureArea,
-      exporting,
       imageUrls,
       starUrl,
       totalCount,
       pixelated,
       onImgError,
-      exportPdf,
+      selectedBird,
+      recordings,
+      loadingRecordings,
+      recordingsError,
+      openBird,
+      onBack,
+      formatDate,
     }
   },
 }
 </script>
+
+<style scoped>
+.overlay-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1.5px solid var(--color-border);
+  background: var(--color-background);
+}
+
+.overlay-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.4rem;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-card);
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+  border-radius: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.08s ease;
+}
+
+.topbar-btn:hover {
+  transform: translate(-1px, -1px);
+}
+
+.topbar-btn:active {
+  transform: translate(1px, 1px);
+}
+</style>

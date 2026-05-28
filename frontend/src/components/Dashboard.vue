@@ -138,6 +138,7 @@
             :is-visible="isAllBirdsOverlayVisible"
             :species="speciesList"
             @close="isAllBirdsOverlayVisible = false"
+            @play-detection="showSpectrogram"
         />
 
     </div>
