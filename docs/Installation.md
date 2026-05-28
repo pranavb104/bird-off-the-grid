@@ -81,6 +81,43 @@ card 1: Device [USB PnP Sound Device], device 0: USB Audio [USB Audio]
 
 The default in `backend/config.yml` is `audio.device: "plughw:1,0"` (card 1, device 0). If your mic shows up on a different card, edit `config.yml` accordingly. See `Testing_Audio.md` for a full mic verification walkthrough.
 
+### 2.6 Optional: turn the Pi into a Wi-Fi access point
+
+When the Pi is deployed off-grid, there's no router to join. `setup-ap.sh` at the repo root configures `wlan0` as a NetworkManager-managed AP so you can connect to it directly from a phone or laptop and load the dashboard at `http://192.168.4.1/`.
+
+Requirements:
+- Raspberry Pi OS Bookworm/Trixie with NetworkManager active (`systemctl is-active NetworkManager`).
+- The Pi is not currently using `wlan0` as its only uplink — turning it into an AP will disconnect any existing Wi-Fi client connection on the same interface.
+
+Run on the Pi:
+
+```bash
+sudo ./setup-ap.sh
+```
+
+You'll be prompted for a Wi-Fi password (8+ chars, or blank for an open network). Defaults can be overridden via env vars:
+
+```bash
+sudo IFACE=wlan0 CHANNEL=6 AP_IP=192.168.4.1/24 ./setup-ap.sh
+```
+
+| Variable | Default | Notes |
+|---|---|---|
+| `IFACE` | `wlan0` | Wireless interface to host the AP on |
+| `CHANNEL` | `6` | 2.4 GHz channel (band is hardcoded to `bg`) |
+| `AP_IP` | `192.168.4.1/24` | Static IP for the AP; clients get DHCP on the same /24 |
+
+The script creates a NetworkManager connection named `MyPiAP` with SSID `birdnet`, sets it to autoconnect on boot, and brings it up immediately. To inspect or control it later:
+
+```bash
+nmcli connection show MyPiAP            # inspect
+sudo nmcli connection down MyPiAP       # stop AP
+sudo nmcli connection up   MyPiAP       # start AP
+sudo nmcli connection delete MyPiAP     # remove entirely
+```
+
+Once the AP is up, join the `birdnet` SSID from your client device and reach the dashboard at `http://192.168.4.1/` (Docker path) or `http://192.168.4.1:7007/` (native debug path).
+
 ---
 
 ## 3. Clone the repository
