@@ -32,3 +32,10 @@ I could have added a bigger battery and solar panel , but doing so would make th
 
 ## Software
 To keep things lean and not processor hungry, I (with the help of Claude) made a new front-end and back-end trimming it down to bare essentials for detection. See documentation [here](/docs/Technical_Architecture.md) and installation docs [here](/docs/Installation.md). 
+
+### Setup screen
+![Timer setup for the pi](/wittyPiSetup.png)
+
+Once connected to the RPI Access Point, the interface shows to setup the date to start/end recording and on/off times. Once set the system can be kept on or switched off to save power and only switches on at the times specified in the script. 
+
+A simple one page interface of the recordings can be seen [here](https://drive.google.com/file/d/1I5Lhnq5n_rv88q3N0buTzOPbZwKreb7I/view?usp=sharing) 
